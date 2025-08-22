@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Leami.Services.Database.Entities;
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,5 +11,6 @@ namespace Leami.Model.Entities
     public class Role : IdentityRole<int>   
     {
         public string? Description { get; set; }
+
     }
 }

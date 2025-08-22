@@ -7,12 +7,18 @@ using System.Threading.Tasks;
 
 namespace Leami.Model.Entities
 {
-    public class Employee: User
+    public class EmployeeDetails
     {
+
+        public int UserId { get; set; }  //PK I FK NA USERS.ID
         [Required, MaxLength(100)]
         public string JobTitle { get; set; } = null!;
 
         [Required]
         public DateTime HireDate { get; set; }
+
+        public string Note { get; set; } = string.Empty;
+        public User User { get; set; } = default!;
     }
+
 }

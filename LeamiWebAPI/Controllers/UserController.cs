@@ -12,7 +12,7 @@ namespace LeamiWebAPI.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class UserController : BaseCRUDController<UserResponse, UserSearchObject, UserRegistrationRequest, UserRegistrationRequest>
+    public class UserController : BaseCRUDController<UserResponse, UserSearchObject, UserRegistrationRequest, UserUpdateRequest>
     {
         private readonly IUserService _userService;  
         public UserController(IUserService userService):base(userService)
@@ -47,7 +47,7 @@ namespace LeamiWebAPI.Controllers
         //    var result = await _userService.CreateWithRoleAsync(dto, "Admin");
         //    return result.Succeeded ? Ok(result.User) : BadRequest(result.Errors);
         //}
-
+       
         [HttpPost("login")]
         public async Task<ActionResult<UserResponse>> Login([FromBody] UserLoginRequest req)
         {
@@ -55,6 +55,9 @@ namespace LeamiWebAPI.Controllers
             if (result == null) return Unauthorized();
             return Ok(result);
         }
+
+
+
 
 
     }

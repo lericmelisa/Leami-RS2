@@ -15,6 +15,7 @@ namespace LeamiWebAPI.Controllers
         public readonly IArticleService articleService;
         public ArticleController(IArticleService _service):base(_service)
         {  
+            articleService = _service;  
         }
       
       

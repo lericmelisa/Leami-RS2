@@ -10,11 +10,15 @@ namespace Leami.Model.Requests
 {
     public class ArticleInsertRequest
     {
-        [Required]
-        [MaxLength(100)]
-        public string ArticleName { get; set; } = string.Empty;
+       
+        public string ArticleName { get; set; } = string.Empty;       
+     
 
-        [MaxLength(500)]
-        public string ArticleCode { get; set; } = string.Empty;
+        public float ArticlePrice { get; set; }
+        public string? ArticleDescription { get; set; }
+        public int CategoryId { get; set; }
+        public byte[] ArticleImage { get; set; }
+
+
     }
 }

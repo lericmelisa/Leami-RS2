@@ -8,5 +8,6 @@ namespace Leami.Model.SearchObjects
 {
     public class UserSearchObject:BaseSearchObject
     {
+        public string? RoleName { get; set; }   
     }
 }

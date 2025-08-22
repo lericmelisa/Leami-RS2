@@ -19,8 +19,7 @@ namespace LeamiWebAPI.Controllers
             _service = service;
         }
         [HttpGet("")]
-        [Authorize(Roles = "Admin")]
-        public async Task<PagedResult<T>> GetAsync([FromQuery] TSearch? searchTerm=null)
+        public async Task<List<T>> GetAsync([FromQuery] TSearch? searchTerm=null)
         {
             return await _service.GetAsync(searchTerm?? new TSearch());
         }

@@ -1,16 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:leami_desktop/providers/article_category_provider.dart';
 import 'package:leami_desktop/providers/article_provider.dart';
 import 'package:leami_desktop/providers/auth_provider.dart';
-import 'package:leami_desktop/providers/logged_article_provider.dart';
+import 'package:leami_desktop/providers/user_provider.dart';
+import 'package:leami_desktop/providers/user_role_provider.dart';
 import 'package:leami_desktop/screens/home_screen.dart';
+import 'package:leami_desktop/screens/users_list.dart';
+
 import 'package:provider/provider.dart';
+import 'package:leami_desktop/theme/theme.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider<ArticleProvider>(
           create: (context) => ArticleProvider(),
+        ),
+        ChangeNotifierProvider<ArticleCategoryProvider>(
+          create: (context) => ArticleCategoryProvider(),
+        ),
+        ChangeNotifierProvider<UserProvider>(
+          create: (context) => UserProvider(),
+        ),
+        ChangeNotifierProvider<UserRoleProvider>(
+          create: (context) => UserRoleProvider(),
         ),
       ],
       child: const MyApp(),
@@ -24,7 +40,13 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: LoginPage());
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.dark,
+      darkTheme: AppTheme.dark(),
+      theme: AppTheme.dark(),
+      home: LoginPage(),
+    );
   }
 }
 
@@ -76,7 +98,7 @@ class LoginPage extends StatelessWidget {
 
                       if (success) {
                         // Nakon uspješnog logina, možeš pozvati ArticleProvider
-                        var articleProvider = ArticleProvider();
+                        // var articleProvider = ArticleProvider();
                         print("PRIJAVLJEN SI");
                         try {
                           Navigator.push(
@@ -86,15 +108,19 @@ class LoginPage extends StatelessWidget {
                             ),
                           );
                           // Fetch articles
-                          var articles = await articleProvider.fetchArticles();
+                          // var articles = await articleProvider.fetchArticles();
                           // Ovdje hendlaj articles podatke
-                          print(articles);
+                          // print(articles);
                         } catch (e) {
                           print(e);
                           // Hendlaj grešku
                         }
-                      } else {
-                        // Prikaži error poruku
+                      }
+                      if (!success) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => UsersList()),
+                        );
                       }
                     },
                     child: const Text('Login'),
