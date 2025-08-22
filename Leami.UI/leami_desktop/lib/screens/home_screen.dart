@@ -8,7 +8,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MasterScreen(
-      title: 'NASLOVNA STRANICA',
+      title: 'Uređivanje artikala',
       child: Center(child: ArticleList()),
     );
   }

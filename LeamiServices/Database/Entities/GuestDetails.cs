@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace Leami.Model.Entities
 {
-    public class Administrator : User   
+    public class GuestDetails    
     {
+        public int UserId { get; set; }
+        public User User { get; set; } = default!;
     }
 }

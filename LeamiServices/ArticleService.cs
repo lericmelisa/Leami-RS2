@@ -3,6 +3,7 @@ using Leami.Model.Requests;
 using Leami.Model.Responses;
 using Leami.Model.SearchObjects;
 using Leami.Services.Database;
+using Mapster;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -32,7 +33,7 @@ namespace Leami.Services
 
             if (!string.IsNullOrEmpty(search.FTS))
             {
-                query = query.Where(pt => pt.ArticleName.Contains(search.FTS) || pt.ArticleCode.Contains(search.FTS));
+                query = query.Where(pt => pt.ArticleName.Contains(search.FTS));
             }
             return query;
         }

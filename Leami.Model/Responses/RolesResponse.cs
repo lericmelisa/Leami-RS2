@@ -8,6 +8,7 @@ namespace Leami.Model.Responses
 {
     public class RolesResponse
     {
+        public int Roleid { get; set; }
         public string? RoleName { get; set; } = string.Empty;
         public string? Description { get; set; } = string.Empty; 
     }

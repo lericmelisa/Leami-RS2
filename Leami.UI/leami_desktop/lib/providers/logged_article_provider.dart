@@ -1,33 +1,15 @@
+import 'package:leami_desktop/models/article.dart';
+import 'package:leami_desktop/models/search_result.dart';
 import 'package:leami_desktop/providers/article_provider.dart';
 import 'dart:developer' as developer;
 
 class LoggedArticleProvider extends ArticleProvider {
   @override
-  Future<dynamic> fetchArticles() async {
+  Future<SearchResult<Article>> get({dynamic filter}) async {
     developer.log("Fetching articles from LoggedArticleProvider");
 
     try {
-      final startTime = DateTime.now();
-      final result = await super.fetchArticles();
-      final endTime = DateTime.now();
-      final duration = endTime.difference(startTime);
-      developer.log(
-        "Articles fetched successfully in ${duration.inMilliseconds} ms",
-        name: 'logged_article_provider ',
-      );
-      print("USAOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
-
-      if (result is List) {
-        developer.log(
-          "Fetched articles: $result",
-          name: 'logged_article_provider',
-        );
-      } else if (result is Map) {
-        developer.log(
-          "Fetched articles successfully",
-          name: 'logged_article_provider',
-        );
-      }
+      final result = await super.get(filter: filter);
 
       return result;
     } catch (e) {

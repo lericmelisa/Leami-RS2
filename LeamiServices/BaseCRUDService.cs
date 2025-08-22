@@ -1,5 +1,6 @@
 ﻿using Leami.Model.SearchObjects;
 using Leami.Services.Database;
+using Mapster;
 using MapsterMapper;
 using System;
 using System.Collections.Generic;

@@ -22,6 +22,16 @@ namespace Leami.Services.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Leami.Model.Entities.AdministratorDetails", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("AdminDetails", (string)null);
+                });
+
             modelBuilder.Entity("Leami.Model.Entities.Article", b =>
                 {
                     b.Property<int>("ArticleId")
@@ -30,15 +40,25 @@ namespace Leami.Services.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ArticleId"));
 
-                    b.Property<string>("ArticleCode")
-                        .IsRequired()
+                    b.Property<string>("ArticleDescription")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("ArticleImage")
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<string>("ArticleName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<float>("ArticlePrice")
+                        .HasColumnType("real");
+
+                    b.Property<int?>("CategoryId")
+                        .HasColumnType("int");
+
                     b.HasKey("ArticleId");
+
+                    b.HasIndex("CategoryId");
 
                     b.ToTable("Articles");
                 });
@@ -58,6 +78,38 @@ namespace Leami.Services.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Cities");
+                });
+
+            modelBuilder.Entity("Leami.Model.Entities.EmployeeDetails", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("HireDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("JobTitle")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("EmployeeDetails", (string)null);
+                });
+
+            modelBuilder.Entity("Leami.Model.Entities.GuestDetails", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("GuestDetails", (string)null);
                 });
 
             modelBuilder.Entity("Leami.Model.Entities.Role", b =>
@@ -90,7 +142,7 @@ namespace Leami.Services.Migrations
                         .HasDatabaseName("RoleNameIndex")
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
-                    b.ToTable("AspNetRoles", (string)null);
+                    b.ToTable("Roles", (string)null);
                 });
 
             modelBuilder.Entity("Leami.Model.Entities.User", b =>
@@ -132,9 +184,6 @@ namespace Leami.Services.Migrations
                     b.Property<string>("Gender")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<byte[]>("Image")
-                        .HasColumnType("varbinary(max)");
-
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("datetime2");
 
@@ -175,14 +224,12 @@ namespace Leami.Services.Migrations
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("bit");
 
+                    b.Property<byte[]>("UserImage")
+                        .HasColumnType("varbinary(max)");
+
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("UserType")
-                        .IsRequired()
-                        .HasMaxLength(8)
-                        .HasColumnType("nvarchar(8)");
 
                     b.HasKey("Id");
 
@@ -197,10 +244,67 @@ namespace Leami.Services.Migrations
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
                     b.ToTable("Users", (string)null);
+                });
 
-                    b.HasDiscriminator<string>("UserType").HasValue("User");
+            modelBuilder.Entity("Leami.Services.Database.Entities.Category", b =>
+                {
+                    b.Property<int>("CategoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.UseTphMappingStrategy();
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CategoryId"));
+
+                    b.Property<string>("CategoryName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("CategoryId");
+
+                    b.ToTable("Category");
+                });
+
+            modelBuilder.Entity("Leami.Services.Database.Entities.Reservation", b =>
+                {
+                    b.Property<int>("ReservationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReservationId"));
+
+                    b.Property<string>("ContactPhone")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("NumberOfGuests")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NumberOfMinors")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("ReservationDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ReservationReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ReservationStatus")
+                        .HasColumnType("int");
+
+                    b.Property<TimeOnly>("ReservationTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("SpeciaLRequests")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ReservationId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Reservations");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
@@ -224,7 +328,7 @@ namespace Leami.Services.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("AspNetRoleClaims", (string)null);
+                    b.ToTable("RoleClaims", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
@@ -248,7 +352,7 @@ namespace Leami.Services.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("AspNetUserClaims", (string)null);
+                    b.ToTable("UserClaims", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
@@ -269,7 +373,7 @@ namespace Leami.Services.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("AspNetUserLogins", (string)null);
+                    b.ToTable("UserLogins", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<int>", b =>
@@ -284,7 +388,7 @@ namespace Leami.Services.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("AspNetUserRoles", (string)null);
+                    b.ToTable("UserRoles", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
@@ -303,36 +407,49 @@ namespace Leami.Services.Migrations
 
                     b.HasKey("UserId", "LoginProvider", "Name");
 
-                    b.ToTable("AspNetUserTokens", (string)null);
+                    b.ToTable("UserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Leami.Model.Entities.Administrator", b =>
+            modelBuilder.Entity("Leami.Model.Entities.AdministratorDetails", b =>
                 {
-                    b.HasBaseType("Leami.Model.Entities.User");
+                    b.HasOne("Leami.Model.Entities.User", "User")
+                        .WithOne("AdminDetails")
+                        .HasForeignKey("Leami.Model.Entities.AdministratorDetails", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.HasDiscriminator().HasValue("Admin");
+                    b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Leami.Model.Entities.Employee", b =>
+            modelBuilder.Entity("Leami.Model.Entities.Article", b =>
                 {
-                    b.HasBaseType("Leami.Model.Entities.User");
+                    b.HasOne("Leami.Services.Database.Entities.Category", "Category")
+                        .WithMany("Articles")
+                        .HasForeignKey("CategoryId");
 
-                    b.Property<DateTime>("HireDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("JobTitle")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasDiscriminator().HasValue("Employee");
+                    b.Navigation("Category");
                 });
 
-            modelBuilder.Entity("Leami.Model.Entities.Guest", b =>
+            modelBuilder.Entity("Leami.Model.Entities.EmployeeDetails", b =>
                 {
-                    b.HasBaseType("Leami.Model.Entities.User");
+                    b.HasOne("Leami.Model.Entities.User", "User")
+                        .WithOne("EmployeeDetails")
+                        .HasForeignKey("Leami.Model.Entities.EmployeeDetails", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.HasDiscriminator().HasValue("Guest");
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Leami.Model.Entities.GuestDetails", b =>
+                {
+                    b.HasOne("Leami.Model.Entities.User", "User")
+                        .WithOne("GuestDetails")
+                        .HasForeignKey("Leami.Model.Entities.GuestDetails", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Leami.Model.Entities.User", b =>
@@ -342,6 +459,15 @@ namespace Leami.Services.Migrations
                         .HasForeignKey("CityId");
 
                     b.Navigation("City");
+                });
+
+            modelBuilder.Entity("Leami.Services.Database.Entities.Reservation", b =>
+                {
+                    b.HasOne("Leami.Model.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
@@ -393,6 +519,20 @@ namespace Leami.Services.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Leami.Model.Entities.User", b =>
+                {
+                    b.Navigation("AdminDetails");
+
+                    b.Navigation("EmployeeDetails");
+
+                    b.Navigation("GuestDetails");
+                });
+
+            modelBuilder.Entity("Leami.Services.Database.Entities.Category", b =>
+                {
+                    b.Navigation("Articles");
                 });
 #pragma warning restore 612, 618
         }
