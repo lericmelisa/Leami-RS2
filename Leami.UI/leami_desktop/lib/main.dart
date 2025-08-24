@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:leami_desktop/models/search_result.dart';
+import 'package:leami_desktop/models/user.dart';
 import 'package:leami_desktop/providers/article_category_provider.dart';
 import 'package:leami_desktop/providers/article_provider.dart';
 import 'package:leami_desktop/providers/auth_provider.dart';
+import 'package:leami_desktop/providers/reservation_provider.dart';
+import 'package:leami_desktop/providers/restaurant_info_provider.dart';
+import 'package:leami_desktop/providers/review_provider.dart';
 import 'package:leami_desktop/providers/user_provider.dart';
 import 'package:leami_desktop/providers/user_role_provider.dart';
 import 'package:leami_desktop/screens/home_screen.dart';
-import 'package:leami_desktop/screens/users_list.dart';
-
+import 'package:leami_desktop/screens/main_menu_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:leami_desktop/theme/theme.dart';
 
@@ -27,6 +31,15 @@ void main() {
         ),
         ChangeNotifierProvider<UserRoleProvider>(
           create: (context) => UserRoleProvider(),
+        ),
+        ChangeNotifierProvider<ReservationProvider>(
+          create: (context) => ReservationProvider(),
+        ),
+        ChangeNotifierProvider<ReviewProvider>(
+          create: (context) => ReviewProvider(),
+        ),
+        ChangeNotifierProvider<RestaurantInfoProvider>(
+          create: (context) => RestaurantInfoProvider(),
         ),
       ],
       child: const MyApp(),
@@ -55,8 +68,13 @@ class LoginPage extends StatelessWidget {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  late SearchResult<User> _users;
+  late UserProvider _userProvider;
+
   @override
   Widget build(BuildContext context) {
+    _userProvider = context.read<UserProvider>();
+
     return Scaffold(
       // Scaffold is a layout structure that provides a default app bar, title,
       appBar: AppBar(title: Text('Login Page')),
@@ -91,35 +109,61 @@ class LoginPage extends StatelessWidget {
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () async {
-                      final success = await AuthProvider.login(
-                        emailController.text,
-                        passwordController.text,
-                      );
+                      final email = emailController.text.trim();
+                      final pass = passwordController.text;
 
-                      if (success) {
-                        // Nakon uspješnog logina, možeš pozvati ArticleProvider
-                        // var articleProvider = ArticleProvider();
-                        print("PRIJAVLJEN SI");
-                        try {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => HomeScreen(),
+                      // 1) login
+                      final success = await AuthProvider.login(email, pass);
+                      if (!success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Pogrešna lozinka ili korisnik.'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      try {
+                        // 2) dohvat korisnika po e-mailu
+                        _users = await _userProvider.get(
+                          filter: {"FTS": email},
+                        );
+                        User user = _users.items!.first;
+                        print("DOHVACENI USER JE: ${user.firstName}");
+
+                        // 3) provjera role
+                        if ((user.role?.name ?? '') != 'Administrator') {
+                          // nije admin → poruka i out
+                          await showDialog(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('Pristup odbijen'),
+                              content: const Text(
+                                'Samo administrator može pristupiti ovoj aplikaciji.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('OK'),
+                                ),
+                              ],
                             ),
                           );
-                          // Fetch articles
-                          // var articles = await articleProvider.fetchArticles();
-                          // Ovdje hendlaj articles podatke
-                          // print(articles);
-                        } catch (e) {
-                          print(e);
-                          // Hendlaj grešku
+                          return;
                         }
-                      }
-                      if (!success) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => UsersList()),
+
+                        // 4) sve OK → idi na glavni ekran
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (_) => const MainMenuScreen(),
+                          ),
+                        );
+                      } catch (e) {
+                        // neuspjeh pri dohvat
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Greška pri dohvatu korisnika: $e'),
+                          ),
                         );
                       }
                     },
@@ -131,92 +175,6 @@ class LoginPage extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }

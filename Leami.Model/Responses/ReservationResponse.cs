@@ -9,18 +9,20 @@ namespace Leami.Model.Responses
 {
     public class ReservationResponse
     {
-       
-        public DateOnly ReservationDate { get; set; }
+
+        public int ReservationId { get; set; }
+        public DateOnly? ReservationDate { get; set; }
 
     
-        public TimeOnly ReservationTime { get; set; }
+        public TimeOnly? ReservationTime { get; set; }
 
-        public int NumberOfGuests { get; set; }
+        public int? NumberOfGuests { get; set; }
 
 
         public int? ReservationStatus { get; set; }
 
         public int? UserId { get; set; }
+        public UserResponse? User { get; set; }
 
         public string? ReservationReason { get; set; }
 
@@ -28,10 +30,10 @@ namespace Leami.Model.Responses
         public int? NumberOfMinors { get; set; }
 
       
-        public string ContactPhone { get; set; } = null!;
+        public string? ContactPhone { get; set; } = null!;
 
         
-        public string SpeciaLRequests { get; set; } = null!;
+        public string? SpeciaLRequests { get; set; } = null!;
 
     }
 }

@@ -8,10 +8,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Leami.Services
+namespace Leami.Services.IServices
 {
-    public interface IArticleService:ICRUDService<ArticleResponse,ArticleSearchObject,ArticleInsertRequest,ArticleInsertRequest> 
+    public interface IArticleService : ICRUDService<ArticleResponse, ArticleSearchObject, ArticleInsertRequest, ArticleInsertRequest>
     {
-     
+
     }
 }

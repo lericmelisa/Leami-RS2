@@ -1,5 +1,5 @@
 ﻿using Leami.Model.SearchObjects;
-using Leami.Services;
+using Leami.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +21,7 @@ namespace LeamiWebAPI.Controllers
         }
    
         [HttpPost] 
-        public async Task<T> Create([FromBody] TInsert request)
+        public virtual async Task<T> Create([FromBody] TInsert request)
         {
             return await _crudService.CreateAsync(request);
         }

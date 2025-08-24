@@ -2,7 +2,7 @@
 using Leami.Model.Requests;
 using Leami.Model.Responses;
 using Leami.Model.SearchObjects;
-using Leami.Services;
+using Leami.Services.IServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 

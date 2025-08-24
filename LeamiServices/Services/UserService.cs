@@ -3,6 +3,7 @@ using Leami.Model.Requests;
 using Leami.Model.Responses;
 using Leami.Model.SearchObjects;
 using Leami.Services.Database;
+using Leami.Services.Services;
 using Mapster;
 using MapsterMapper;
 using Microsoft.AspNetCore.Http;
@@ -22,9 +23,9 @@ using static System.Net.WebRequestMethods;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
-namespace Leami.Services
+namespace Leami.Services.IServices
 {
-    public class UserService:BaseCRUDService<UserResponse, UserSearchObject, User,UserRegistrationRequest, UserUpdateRequest>,IUserService
+    public class UserService : BaseCRUDService<UserResponse, UserSearchObject, User, UserRegistrationRequest, UserUpdateRequest>, IUserService
     {
 
         private readonly UserManager<User> _userManager;
@@ -33,14 +34,14 @@ namespace Leami.Services
         LeamiDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor _http;
-        public UserService(LeamiDbContext leamiDbContext, IMapper _mapper, IConfiguration configuration, UserManager<User> userManager,RoleManager<Role> roleManager, IHttpContextAccessor http) :base(leamiDbContext, _mapper)
+        public UserService(LeamiDbContext leamiDbContext, IMapper _mapper, IConfiguration configuration, UserManager<User> userManager, RoleManager<Role> roleManager, IHttpContextAccessor http) : base(leamiDbContext, _mapper)
         {
             mapper = _mapper;
             _userManager = userManager;
             _roleManager = roleManager;
             _context = leamiDbContext;
-            _configuration = configuration; 
-            _http = http;   
+            _configuration = configuration;
+            _http = http;
         }
         protected override IQueryable<User> ApplyFilter(IQueryable<User> query, UserSearchObject search)
         {
@@ -56,10 +57,10 @@ namespace Leami.Services
                             ur.UserId == u.Id &&
                             _context.Roles.Any(r => r.Id == ur.RoleId && r.Name!.Contains(role))
                         ));
-                }
+            }
 
 
-            if (search.FTS !=null)
+            if (search.FTS != null)
             {
                 var fts = search.FTS.Trim();
 
@@ -236,7 +237,7 @@ namespace Leami.Services
             dto.Note = user.EmployeeDetails?.Note;
 
             return dto;
-        
+
         }
         private async Task EnsureDetailsForRolesAsync(User user, HashSet<string> roleNames, UserUpdateRequest req)
         {
@@ -397,10 +398,10 @@ namespace Leami.Services
                 FirstName = request.FirstName,
                 LastName = request.LastName,
                 Email = request.Email,
-                Created = DateTime.Now,         
-                LastLoginAt =DateTime.Now,
-                UserName = request.Email,   
-                UserImage=request.UserImage// <— ovdje automatski kopiraš e‑mail u Username
+                Created = DateTime.Now,
+                LastLoginAt = DateTime.Now,
+                UserName = request.Email,
+                UserImage = request.UserImage// <— ovdje automatski kopiraš e‑mail u Username
             };
 
             // 3) Kreiranje uz hash lozinke
@@ -441,13 +442,13 @@ namespace Leami.Services
 
             var response = mapper.Map<UserResponse>(user);
 
-           
+
             var roleNames = await _userManager.GetRolesAsync(user);
             var roleEntities = await _roleManager.Roles
                 .Where(r => roleNames.Contains(r.Name))
                 .ToListAsync();
 
-         
+
 
             (response.Token, response.Expiration) = await GenerateJwtAsync(user);
 
@@ -470,7 +471,7 @@ namespace Leami.Services
             await _userManager.UpdateAsync(user);
 
 
-            
+
             // 4) Mapiraj osnovne podatke u response DTO
             var response = mapper.Map<UserResponse>(user);
             response.LastLoginAt = user.LastLoginAt;
@@ -483,8 +484,8 @@ namespace Leami.Services
                 .Where(r => roleNames.Contains(r.Name))
                 .ToListAsync();
 
-            
-           
+
+
 
             (response.Token, response.Expiration) = await GenerateJwtAsync(user);
 

@@ -65,17 +65,17 @@ namespace Leami.Services.Migrations
 
             modelBuilder.Entity("Leami.Model.Entities.City", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("CityId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CityId"));
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("Id");
+                    b.HasKey("CityId");
 
                     b.ToTable("Cities");
                 });
@@ -294,10 +294,9 @@ namespace Leami.Services.Migrations
                         .HasColumnType("time");
 
                     b.Property<string>("SpeciaLRequests")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("UserId")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("ReservationId");
@@ -305,6 +304,74 @@ namespace Leami.Services.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Reservations");
+                });
+
+            modelBuilder.Entity("Leami.Services.Database.Entities.RestaurantInfo", b =>
+                {
+                    b.Property<int>("RestaurantId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RestaurantId"));
+
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<TimeSpan>("ClosingTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<TimeSpan>("OpeningTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("RestaurantImage")
+                        .HasColumnType("varbinary(max)");
+
+                    b.HasKey("RestaurantId");
+
+                    b.ToTable("RestaurantInfos");
+                });
+
+            modelBuilder.Entity("Leami.Services.Database.Entities.Review", b =>
+                {
+                    b.Property<int>("ReviewId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReviewId"));
+
+                    b.Property<string>("Comment")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletionReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<short>("Rating")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("ReviewerUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ReviewId");
+
+                    b.HasIndex("ReviewerUserId");
+
+                    b.ToTable("Reviews");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
@@ -465,9 +532,22 @@ namespace Leami.Services.Migrations
                 {
                     b.HasOne("Leami.Model.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Leami.Services.Database.Entities.Review", b =>
+                {
+                    b.HasOne("Leami.Model.Entities.User", "ReviewerUser")
+                        .WithMany()
+                        .HasForeignKey("ReviewerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReviewerUser");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>

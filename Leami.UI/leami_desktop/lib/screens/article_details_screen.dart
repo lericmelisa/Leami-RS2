@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:leami_desktop/models/article_category.dart';
 import 'package:leami_desktop/models/search_result.dart';
@@ -12,8 +12,8 @@ import 'package:leami_desktop/models/article.dart';
 import 'package:leami_desktop/providers/article_provider.dart';
 
 class ArticleDetailsScreen extends StatefulWidget {
-  Article? article;
-  ArticleDetailsScreen({super.key, this.article});
+  final Article? article;
+  const ArticleDetailsScreen({super.key, this.article});
 
   @override
   State<ArticleDetailsScreen> createState() => _ArticleDetailsScreenState();
@@ -21,25 +21,19 @@ class ArticleDetailsScreen extends StatefulWidget {
 
 class _ArticleDetailsScreenState extends State<ArticleDetailsScreen> {
   final formKey = GlobalKey<FormBuilderState>();
-
   Map<String, dynamic> _initialValue = {};
   ImageProvider? _imagePreview;
   String? _base64Image;
-  bool providerInitialized = false;
 
   late ArticleProvider articleProvider;
-  late ArticleCategoryProvider articlecategoryProvider;
-
+  late ArticleCategoryProvider categoryProvider;
   SearchResult<ArticleCategory>? categories;
 
   @override
   void initState() {
     super.initState();
-    articleProvider = Provider.of<ArticleProvider>(context, listen: false);
-    articlecategoryProvider = Provider.of<ArticleCategoryProvider>(
-      context,
-      listen: false,
-    );
+    articleProvider = context.read<ArticleProvider>();
+    categoryProvider = context.read<ArticleCategoryProvider>();
 
     if (widget.article != null) {
       _initialValue = {
@@ -49,16 +43,15 @@ class _ArticleDetailsScreenState extends State<ArticleDetailsScreen> {
         'categoryId': widget.article!.categoryId,
         'articleImage': widget.article!.articleImage,
       };
-
       final img = widget.article!.articleImage;
-      if (img.isNotEmpty) {
+      if (img != null && img.isNotEmpty) {
         try {
-          final pureBase64 = img.contains(',') ? img.split(',').last : img;
-          final decoded = base64Decode(pureBase64);
-          _imagePreview = MemoryImage(decoded);
-          _base64Image = pureBase64;
-        } catch (e) {
-          debugPrint('Greška pri dekodiranju slike: $e');
+          final pure = img.contains(',') ? img.split(',').last : img;
+          final bytes = base64Decode(pure);
+          _imagePreview = MemoryImage(bytes);
+          _base64Image = pure;
+        } catch (_) {
+          /* ignore */
         }
       }
     }
@@ -67,16 +60,12 @@ class _ArticleDetailsScreenState extends State<ArticleDetailsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    articleProvider = context.read<ArticleProvider>();
-    articlecategoryProvider = context.read<ArticleCategoryProvider>();
-    providerInitialized = true;
-    initFormData();
+    _loadCategories();
   }
 
-  initFormData() async {
-    categories = await articlecategoryProvider.get();
-
-    if (widget.article != null && widget.article!.categoryId != null) {
+  Future<void> _loadCategories() async {
+    categories = await categoryProvider.get();
+    if (widget.article != null) {
       formKey.currentState?.fields['categoryId']?.didChange(
         widget.article!.categoryId,
       );
@@ -88,20 +77,121 @@ class _ArticleDetailsScreenState extends State<ArticleDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Article Details')),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              if (categories == null)
-                const Center(child: CircularProgressIndicator())
-              else
-                _buildForm(),
-              const SizedBox(height: 16),
-              _buildSaveButton(), // ElevatedButton -> narandžast
-            ],
+      body: categories == null
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildForm(),
+                  const SizedBox(height: 24),
+                  _buildSaveButton(),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildForm() {
+    return FormBuilder(
+      key: formKey,
+      initialValue: _initialValue,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FormBuilderTextField(
+            name: 'articleName',
+            decoration: const InputDecoration(labelText: 'Article Name'),
+            validator: FormBuilderValidators.required(
+              errorText: 'Naziv je obavezan.',
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          FormBuilderTextField(
+            name: 'articlePrice',
+            decoration: const InputDecoration(labelText: 'Article Price'),
+            keyboardType: TextInputType.number,
+            validator: FormBuilderValidators.compose([
+              FormBuilderValidators.required(errorText: 'Cijena je obavezna.'),
+              (v) {
+                if (v == null || v.isEmpty) return null;
+                final d = double.tryParse(v.replaceAll(',', '.'));
+                if (d == null) return 'Nevažeći broj';
+                if (d < 0) return 'Mora biti ≥ 0';
+                return null;
+              },
+            ]),
+          ),
+          const SizedBox(height: 12),
+          FormBuilderTextField(
+            name: 'articleDescription',
+            decoration: const InputDecoration(labelText: 'Article Description'),
+            maxLines: 3,
+          ),
+          const SizedBox(height: 12),
+          FormBuilderDropdown<int>(
+            name: 'categoryId',
+            decoration: const InputDecoration(labelText: 'Category'),
+            items: categories!.items!
+                .map(
+                  (c) => DropdownMenuItem(
+                    value: c.categoryId,
+                    child: Text(c.categoryName ?? 'N/A'),
+                  ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 12),
+          FormBuilderField<String>(
+            name: 'articleImage',
+            builder: (field) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_imagePreview != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image(
+                        image: _imagePreview!,
+                        width: 140,
+                        height: 140,
+                      ),
+                    )
+                  else
+                    const Text('Nema slike'),
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        icon: const Icon(Icons.upload),
+                        label: const Text('Odaberi sliku'),
+                        onPressed: () async {
+                          final res = await FilePicker.platform.pickFiles(
+                            type: FileType.image,
+                          );
+                          if (res != null && res.files.single.path != null) {
+                            final bytes = await File(
+                              res.files.single.path!,
+                            ).readAsBytes();
+                            setState(() {
+                              _base64Image = base64Encode(bytes);
+                              _imagePreview = MemoryImage(bytes);
+                            });
+                            field.didChange(_base64Image);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  if (field.hasError)
+                    Text(
+                      field.errorText!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -111,190 +201,29 @@ class _ArticleDetailsScreenState extends State<ArticleDetailsScreen> {
       onPressed: () async {
         final ok = formKey.currentState?.saveAndValidate() ?? false;
         if (!ok) return;
-
         final raw = Map<String, dynamic>.from(formKey.currentState!.value);
-
+        if (_base64Image != null) raw['articleImage'] = _base64Image;
         try {
           if (widget.article == null) {
-            widget.article = await articleProvider.insert(raw);
+            await articleProvider.insert(raw);
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(const SnackBar(content: Text('Article created.')));
           } else {
-            widget.article = await articleProvider.update(
-              widget.article!.articleId!,
-              raw,
-            );
-            print('Article updated: $raw');
+            await articleProvider.update(widget.article!.articleId!, raw);
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(const SnackBar(content: Text('Article updated.')));
           }
+          // vratimo `true` da lista zna da treba refresh
+          Navigator.of(context).pop(true);
         } catch (e) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Error: $e')));
         }
-        setState(() {});
       },
       child: const Text('Save'),
-    );
-  }
-
-  Widget _buildForm() {
-    return FormBuilder(
-      key: formKey,
-      initialValue: _initialValue,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          FormBuilderTextField(
-            name: 'articleName',
-            decoration: const InputDecoration(labelText: 'Article Name'),
-            validator: FormBuilderValidators.compose([
-              FormBuilderValidators.required(errorText: 'Naziv je obavezan.'),
-              FormBuilderValidators.minLength(
-                2,
-                errorText: 'Minimalno 2 znaka.',
-              ),
-            ]),
-          ),
-          const SizedBox(height: 12),
-
-          FormBuilderTextField(
-            name: 'articlePrice',
-            decoration: const InputDecoration(labelText: 'Article Price'),
-            keyboardType: TextInputType.number,
-            validator: FormBuilderValidators.compose([
-              FormBuilderValidators.required(errorText: 'Cijena je obavezna.'),
-              (value) {
-                if (value == null || value.trim().isEmpty) return null;
-                final parsed = double.tryParse(value.replaceAll(',', '.'));
-                if (parsed == null) return 'Unesite validan broj.';
-                if (parsed < 0) return 'Cijena mora biti >= 0.';
-                return null;
-              },
-            ]),
-          ),
-          const SizedBox(height: 12),
-
-          FormBuilderTextField(
-            name: 'articleDescription',
-            decoration: const InputDecoration(labelText: 'Article Description'),
-            maxLines: 3,
-          ),
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              Expanded(
-                child: FormBuilderDropdown(
-                  name: "categoryId",
-                  decoration: const InputDecoration(
-                    labelText: "Article Category",
-                  ),
-                  items:
-                      categories?.items
-                          ?.map(
-                            (e) => DropdownMenuItem(
-                              value: e.categoryId,
-                              child: Text(e.categoryName ?? 'N/A'),
-                            ),
-                          )
-                          .toList() ??
-                      [],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          FormBuilderField<String>(
-            name: 'articleImage',
-            validator: (value) {
-              if ((value == null || value.isEmpty) &&
-                  (_base64Image == null || _base64Image!.isEmpty)) {
-                return 'Morate dodati sliku.';
-              }
-              return null;
-            },
-            builder: (field) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _imagePreview != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image(
-                            image: _imagePreview!,
-                            width: 140,
-                            height: 140,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : const Text('Nema slike'),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      TextButton.icon(
-                        icon: const Icon(Icons.upload),
-                        label: const Text('Odaberi sliku'),
-                        onPressed: () async {
-                          try {
-                            final result = await FilePicker.platform.pickFiles(
-                              type: FileType.image,
-                            );
-                            if (result != null &&
-                                result.files.single.path != null) {
-                              final file = File(result.files.single.path!);
-                              final bytes = await file.readAsBytes();
-                              final b64 = base64Encode(bytes);
-
-                              setState(() {
-                                _base64Image = b64;
-                                _imagePreview = MemoryImage(bytes);
-                              });
-
-                              field.didChange(b64);
-                            }
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Greška pri izboru slike: $e'),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      if (_imagePreview != null)
-                        TextButton.icon(
-                          icon: const Icon(Icons.delete_outline),
-                          label: const Text('Ukloni'),
-                          onPressed: () {
-                            setState(() {
-                              _base64Image = null;
-                              _imagePreview = null;
-                            });
-                            field.didChange(null);
-                          },
-                        ),
-                    ],
-                  ),
-                  if (field.hasError)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        field.errorText!,
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
     );
   }
 }

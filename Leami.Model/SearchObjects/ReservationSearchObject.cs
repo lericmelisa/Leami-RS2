@@ -10,5 +10,6 @@ namespace Leami.Model.SearchObjects
     {
         public DateOnly? ReservationDate { get; set; }
         public int? UserId { get; set;}
+        public bool? IsExpired { get; set; }
     }
 }

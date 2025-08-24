@@ -18,6 +18,9 @@ abstract class BaseProvider<T> with ChangeNotifier {
     );
   }
 
+  String get baseUrl => _baseUrl!;
+  String get endpoint => _endpoint;
+
   Future<SearchResult<T>> get({dynamic filter}) async {
     var url = '$_baseUrl/$_endpoint';
 
@@ -32,7 +35,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
     var response = await http.get(uri, headers: headers);
     print(response.body);
 
-    _ensureValidResponseOrThrow(response);
+    ensureValidResponseOrThrow(response);
     final data = jsonDecode(response.body);
 
     if (data is List) {
@@ -59,7 +62,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
     dev.log('Status: ${response.statusCode}', name: 'HTTP');
     dev.log('Body: ${response.body}', name: 'HTTP');
 
-    _ensureValidResponseOrThrow(response);
+    ensureValidResponseOrThrow(response);
 
     final data = _safeJsonDecode(response.body);
     return fromJson(data);
@@ -81,7 +84,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
     // dev.log('Status: ${response.statusCode}', name: 'HTTP');
     // dev.log('Body: ${response.body}', name: 'HTTP');
 
-    _ensureValidResponseOrThrow(response);
+    ensureValidResponseOrThrow(response);
 
     final data = _safeJsonDecode(response.body);
     return fromJson(data);
@@ -101,14 +104,14 @@ abstract class BaseProvider<T> with ChangeNotifier {
     dev.log('Status: ${response.statusCode}', name: 'HTTP');
     dev.log('Body: ${response.body}', name: 'HTTP');
 
-    _ensureValidResponseOrThrow(response);
+    ensureValidResponseOrThrow(response);
 
     // Backend vraća "true" kao string ili bool → samo provjeri
     return response.body.toLowerCase().contains("true");
   }
 
   /// Umjesto `isValidResponse` koji guta poruke, bacaj Exception s tekstom backenda
-  void _ensureValidResponseOrThrow(Response response) {
+  void ensureValidResponseOrThrow(Response response) {
     final code = response.statusCode;
     if (code >= 200 && code <= 299) return;
 

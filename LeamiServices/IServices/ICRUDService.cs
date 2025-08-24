@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Leami.Services
+namespace Leami.Services.IServices
 {
-    public interface ICRUDService<T,TSearch,TInsert,TUpdate>:IService<T, TSearch>
+    public interface ICRUDService<T, TSearch, TInsert, TUpdate> : IService<T, TSearch>
         where T : class
         where TSearch : BaseSearchObject
         where TInsert : class
@@ -16,6 +16,6 @@ namespace Leami.Services
         Task<T> CreateAsync(TInsert request);
         Task<T> UpdateAsync(int id, TUpdate request);
         Task<bool> DeleteAsync(int id);
-        
+
     }
 }

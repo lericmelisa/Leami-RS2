@@ -146,10 +146,7 @@ class _UsersListState extends State<UsersList> {
   Widget _buildSearch() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).colorScheme.primary),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [
           const Icon(Icons.search),
@@ -315,7 +312,7 @@ class _UsersListState extends State<UsersList> {
           ElevatedButton(
             onPressed: () async {
               try {
-                await userProvider.delete(u.id);
+                await userProvider.delete(u.id!);
                 Navigator.of(ctx).pop();
                 final filter = <String, dynamic>{
                   "RoleName": _currentRoleFilter!,

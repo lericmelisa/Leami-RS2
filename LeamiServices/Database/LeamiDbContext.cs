@@ -56,6 +56,10 @@ namespace Leami.Services.Database
         public DbSet<AdministratorDetails> AdminDetails { get; set; }
         public DbSet<GuestDetails> GuestDetails { get; set; }
         public DbSet<Reservation> Reservations { get; set; }
+        public DbSet<Review> Reviews { get; set; }
+        public DbSet<RestaurantInfo> RestaurantInfos { get; set; }
+
+
 
 
     }

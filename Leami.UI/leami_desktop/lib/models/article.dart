@@ -8,7 +8,7 @@ class Article {
   String? articleName;
   double? articlePrice;
   String? articleDescription;
-  String articleImage;
+  String? articleImage;
   int? categoryId;
 
   Article({

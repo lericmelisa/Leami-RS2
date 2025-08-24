@@ -11,9 +11,7 @@ namespace Leami.Model.Requests
     public class ArticleInsertRequest
     {
        
-        public string ArticleName { get; set; } = string.Empty;       
-     
-
+        public string ArticleName { get; set; } = string.Empty;   
         public float ArticlePrice { get; set; }
         public string? ArticleDescription { get; set; }
         public int CategoryId { get; set; }

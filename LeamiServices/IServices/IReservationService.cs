@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Leami.Services.Database.Entities;
 using Leami.Model.Entities;
 using Leami.Model.Requests;
 using Leami.Model.Responses;
 using Leami.Model.SearchObjects;
-
-namespace Leami.Services
+namespace Leami.Services.IServices
 {
-    public interface ICategoryService:ICRUDService<CategoryResponse, CategorySearchObject, CategoryInsertRequest, CategoryInsertRequest>   
+    public interface IReservationService : ICRUDService<ReservationResponse, ReservationSearchObject, ReservationInsertRequest, ReservationUpdateRequest>
     {
     }
 }

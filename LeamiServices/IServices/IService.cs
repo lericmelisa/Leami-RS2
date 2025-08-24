@@ -1,15 +1,14 @@
 ﻿using Leami.Model.Responses;
 using Leami.Model.SearchObjects;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Leami.Services
+namespace Leami.Services.IServices
 {
-    public interface IService<T,TSearch> where T : class where TSearch : BaseSearchObject 
+    public interface IService<T, TSearch> where T : class where TSearch : BaseSearchObject
     {
         Task<List<T>> GetAsync(TSearch search);
         Task<T?> GetByIdAsync(int id);

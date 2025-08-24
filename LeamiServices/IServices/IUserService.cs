@@ -11,9 +11,9 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Leami.Services
+namespace Leami.Services.IServices
 {
-    public interface  IUserService: ICRUDService<UserResponse, UserSearchObject, UserRegistrationRequest, UserUpdateRequest>
+    public interface IUserService : ICRUDService<UserResponse, UserSearchObject, UserRegistrationRequest, UserUpdateRequest>
     {
         Task<UserResponse?> LoginAsync(UserLoginRequest request);
         //Task<IdentityResult> RegisterAsync(RegisterDto dto);

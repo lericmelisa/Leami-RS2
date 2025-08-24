@@ -20,7 +20,7 @@ namespace Leami.Model.Requests
         public int NumberOfGuests { get; set; }
 
 
-        public int? ReservationStatus { get; set; }
+        public int ReservationStatus { get; set; }
 
         public int? UserId { get; set; }
 
@@ -34,9 +34,8 @@ namespace Leami.Model.Requests
         [Phone(ErrorMessage = "The phone needs to be in a valid format")]
         public string ContactPhone { get; set; } = null!;
 
-        [Required(AllowEmptyStrings = false, ErrorMessage = "This field can not be empty.")]
-        [MaxLength(1000, ErrorMessage = "Thereservation notes can't have more than 1000 characters.")]
-        public string SpeciaLRequests { get; set; } = null!;
+      
+        public string? SpeciaLRequests { get; set; } = null!;
 
     }
 }

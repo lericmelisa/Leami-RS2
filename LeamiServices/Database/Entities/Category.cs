@@ -12,7 +12,7 @@ namespace Leami.Services.Database.Entities
     {
         [Key]
         public int CategoryId { get; set; }
-        public string CategoryName { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
 
         public  ICollection<Article> Articles { get; set; } = new List<Article>();
 

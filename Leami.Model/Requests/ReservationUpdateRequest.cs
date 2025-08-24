@@ -9,15 +9,14 @@ namespace Leami.Model.Requests
 {
     public class ReservationUpdateRequest
     {
-        [Required(ErrorMessage = "This field can not be empty.")]
-        public DateOnly ReservationDate { get; set; }
+      
+        public DateOnly? ReservationDate { get; set; }
 
-        [Required(ErrorMessage = "This field can not be empty.")]
-        public TimeOnly ReservationTime { get; set; }
+     
+        public TimeOnly? ReservationTime { get; set; }
 
-        [Required(ErrorMessage = "This field can not be empty.")]
         [Range(1, 100, ErrorMessage = "The number of guests can be in a range from 1 to 100")]
-        public int NumberOfGuests { get; set; }
+        public int? NumberOfGuests { get; set; }
 
 
         public int? ReservationStatus { get; set; }
@@ -30,13 +29,11 @@ namespace Leami.Model.Requests
         [Range(0, 100, ErrorMessage = "The number of minors can be in a range from 0 to 100")]
         public int? NumberOfMinors { get; set; }
 
-        [Required(AllowEmptyStrings = false, ErrorMessage = "This field can not be empty.")]
         [Phone(ErrorMessage = "The phone needs to be in a valid format")]
-        public string ContactPhone { get; set; } = null!;
+        public string? ContactPhone { get; set; } = null!;
 
-        [Required(AllowEmptyStrings = false, ErrorMessage = "This field can not be empty.")]
         [MaxLength(1000, ErrorMessage = "Thereservation notes can't have more than 1000 characters.")]
-        public string SpeciaLRequests { get; set; } = null!;
+        public string? SpeciaLRequests { get; set; } = null!;
 
     }
 }

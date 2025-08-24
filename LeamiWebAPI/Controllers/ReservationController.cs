@@ -1,8 +1,8 @@
-﻿using Leami.Services;
-using Leami.Model.Entities;
+﻿using Leami.Model.Entities;
 using Leami.Model.Requests;
 using Leami.Model.Responses;
 using Leami.Model.SearchObjects;
+using Leami.Services.IServices;
 
 namespace LeamiWebAPI.Controllers
 {

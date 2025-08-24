@@ -1,5 +1,4 @@
-﻿using Leami.Services;
-using Leami.Model;
+﻿using Leami.Model;
 using Leami.Services.Database;
 using Microsoft.EntityFrameworkCore;
 using Leami.Model.Entities;
@@ -10,6 +9,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.OpenApi.Models;
+using Leami.Services.Services;
+using Leami.Services.IServices;
+using LeamiWebAPI.Controllers;
 
 
 
@@ -28,6 +30,10 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IRestaurantInfo, RestaurantInfoService>();
+
+
 
 
 

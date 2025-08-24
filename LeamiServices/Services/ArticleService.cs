@@ -3,6 +3,7 @@ using Leami.Model.Requests;
 using Leami.Model.Responses;
 using Leami.Model.SearchObjects;
 using Leami.Services.Database;
+using Leami.Services.IServices;
 using Mapster;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
@@ -12,18 +13,18 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Leami.Services
+namespace Leami.Services.Services
 {
-    public class ArticleService : 
-        BaseCRUDService<ArticleResponse,ArticleSearchObject,Article,ArticleInsertRequest,ArticleInsertRequest>,IArticleService
+    public class ArticleService :
+        BaseCRUDService<ArticleResponse, ArticleSearchObject, Article, ArticleInsertRequest, ArticleInsertRequest>, IArticleService
     {
-        private readonly LeamiDbContext _context;   
+        private readonly LeamiDbContext _context;
 
-        public ArticleService(LeamiDbContext context,IMapper mapper):base(context, mapper)
+        public ArticleService(LeamiDbContext context, IMapper mapper) : base(context, mapper)
         {
-            _context=context;
+            _context = context;
         }
-        
+
         protected override IQueryable<Article> ApplyFilter(IQueryable<Article> query, ArticleSearchObject search)
         {
             if (!string.IsNullOrEmpty(search.ArticleName))
@@ -38,7 +39,7 @@ namespace Leami.Services
             return query;
         }
 
-   
+
 
         //public async Task<List<ArticleResponse>> GetArticles(ArticleSearchObject? searchTerm)
         //{

@@ -3,6 +3,7 @@ using Leami.Model.Requests;
 using Leami.Model.Responses;
 using Leami.Model.SearchObjects;
 using Leami.Services.Database;
+using Leami.Services.IServices;
 using Mapster;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +13,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Leami.Services
+namespace Leami.Services.Services
 {
     public class RoleService :
         BaseCRUDService<RolesResponse, RoleSearchObject, Role, RoleInsertRequest, RoleInsertRequest>, IRoleService

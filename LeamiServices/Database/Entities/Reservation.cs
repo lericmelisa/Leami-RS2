@@ -10,7 +10,7 @@ namespace Leami.Services.Database.Entities
     public class Reservation
     {
         public int ReservationId { get; set; }
-        public int? UserId { get; set; }    
+        public int UserId { get; set; }    
         public User? User { get; set; }  
 
 
@@ -24,11 +24,11 @@ namespace Leami.Services.Database.Entities
 
         public string? ReservationReason { get; set; }
 
-        public int? NumberOfMinors { get; set; }
+        public int? NumberOfMinors { get; set; } 
 
         public string ContactPhone { get; set; } = null!;
 
-        public string SpeciaLRequests { get; set; } = null!;
+        public string? SpeciaLRequests { get; set; } 
 
     }
 }

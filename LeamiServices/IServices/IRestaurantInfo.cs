@@ -7,10 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Leami.Services
+namespace Leami.Services.IServices
 {
-    public interface IRoleService: ICRUDService<RolesResponse, RoleSearchObject, RoleInsertRequest, RoleInsertRequest>
-       
+    public interface IRestaurantInfo:ICRUDService<RestaurantInfoResponse,BaseSearchObject,RestaurantInfoInsertRequest,RestaurantInfoUpdateRequest>
     {
 
     }

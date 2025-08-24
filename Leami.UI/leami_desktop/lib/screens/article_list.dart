@@ -24,7 +24,6 @@ class _ArticleListState extends State<ArticleList> {
   SearchResult<ArticleCategory>? categories;
 
   Map<int, ArticleCategory> categoryMap = {};
-
   final TextEditingController searchController = TextEditingController();
 
   @override
@@ -53,15 +52,33 @@ class _ArticleListState extends State<ArticleList> {
     }
   }
 
+  Future<void> _loadArticles([Map<String, dynamic>? filter]) async {
+    try {
+      articles = await articleProvider.get(filter: filter);
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('Error loading articles: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const SizedBox(height: 8),
-        _buildSearch(),
-        const SizedBox(height: 8),
-        Expanded(child: _buildResultView()),
-      ],
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const SizedBox.shrink(),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildSearch(),
+            const SizedBox(height: 16),
+            Expanded(child: _buildResultView()),
+          ],
+        ),
+      ),
     );
   }
 
@@ -78,28 +95,27 @@ class _ArticleListState extends State<ArticleList> {
               ),
               onSubmitted: (_) async {
                 await _loadArticles({"ArticleName": searchController.text});
-                setState(() {});
               },
             ),
           ),
           const SizedBox(width: 8),
           ElevatedButton(
-            onPressed: () async {
-              final filter = {"ArticleName": searchController.text};
-              await _loadArticles(filter);
-              setState(() {});
-            },
+            onPressed: () =>
+                _loadArticles({"ArticleName": searchController.text}),
             child: const Text("Pretraga"),
           ),
           const SizedBox(width: 8),
           ElevatedButton(
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final result = await Navigator.push<bool>(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ArticleDetailsScreen(article: null),
+                  builder: (_) => const ArticleDetailsScreen(article: null),
                 ),
               );
+              if (result == true) {
+                await _loadArticles();
+              }
             },
             child: const Text("Dodaj novi"),
           ),
@@ -108,12 +124,10 @@ class _ArticleListState extends State<ArticleList> {
     );
   }
 
-  /// TabBar (kategorije) + responsivan Grid kartica
   Widget _buildResultView() {
     if (categories == null) {
       return const Center(child: CircularProgressIndicator());
     }
-
     final catList = categories!.items ?? [];
     if (catList.isEmpty) {
       return const Center(child: Text('Nema dostupnih kategorija.'));
@@ -124,14 +138,11 @@ class _ArticleListState extends State<ArticleList> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // kontejner iza TabBar-a (tamni panel)
-          Container(
-            child: _LeamiTabBar(
-              tabs: [
-                for (final c in catList)
-                  Tab(text: c.categoryName ?? 'Kategorija'),
-              ],
-            ),
+          _LeamiTabBar(
+            tabs: [
+              for (final c in catList)
+                Tab(text: c.categoryName ?? 'Kategorija'),
+            ],
           ),
           const SizedBox(height: 8),
           Expanded(
@@ -143,23 +154,25 @@ class _ArticleListState extends State<ArticleList> {
                     items: (articles?.items ?? [])
                         .where((a) => a.categoryId == c.categoryId)
                         .toList(),
-                    onAddNew: () {
-                      Navigator.push(
+                    onAddNew: () async {
+                      final result = await Navigator.push<bool>(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              ArticleDetailsScreen(article: null),
+                          builder: (_) =>
+                              const ArticleDetailsScreen(article: null),
                         ),
                       );
+                      if (result == true) await _loadArticles();
                     },
-                    onEdit: (article) {
-                      Navigator.push(
+                    onEdit: (article) async {
+                      final result = await Navigator.push<bool>(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
+                          builder: (_) =>
                               ArticleDetailsScreen(article: article),
                         ),
                       );
+                      if (result == true) await _loadArticles();
                     },
                     onDelete: _showDeleteArticleDialog,
                     getCategoryName: (id) =>
@@ -173,136 +186,34 @@ class _ArticleListState extends State<ArticleList> {
     );
   }
 
-  Future<void> _loadArticles([Map<String, dynamic>? filter]) async {
-    try {
-      articles = await articleProvider.get(filter: filter);
-      if (mounted) setState(() {});
-    } catch (e) {
-      debugPrint('Error loading articles: $e');
-    }
-  }
-
   void _showDeleteArticleDialog(Article item) {
     showDialog(
       barrierDismissible: false,
       context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text(
-                "Da li ste sigurni da želite izbrisati artikal?",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Text(
-                    "Ako želite izbrisati artikal pritisnite \"Izbriši\"; ako ne, pritisnite \"Odustani\"",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  SizedBox(height: 20),
-                ],
-              ),
-              actions: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () async {
-                        try {
-                          if (item.articleId == null) {
-                            throw Exception("Article id is null");
-                          }
-                          await articleProvider.delete(item.articleId!);
-                          if (mounted) Navigator.of(context).pop();
-                          await _loadArticles();
-                          showDialog(
-                            barrierDismissible: false,
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                title: const Text(
-                                  "Uspješno izbrisan artikal",
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    Text(
-                                      "Uspješno ste izbrisali izabrani artikal!",
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    SizedBox(height: 20),
-                                  ],
-                                ),
-                                actions: [
-                                  Center(
-                                    child: ElevatedButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(),
-                                      child: const Text("Ok"),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        } catch (e) {
-                          if (mounted) Navigator.of(context).pop();
-                          _showErrorDialog(
-                            "Došlo je do greške prilikom brisanja: $e",
-                          );
-                        }
-                      },
-                      child: const Text("Izbriši"),
-                    ),
-                    const SizedBox(width: 10),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade700,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text("Odustani"),
-                    ),
-                  ],
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showErrorDialog(String message) {
-    showDialog(
-      barrierDismissible: false,
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Greška", textAlign: TextAlign.center),
-          content: Text(message),
-          actions: [
-            Center(
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text("Ok"),
-              ),
-            ),
-          ],
-        );
-      },
+      builder: (ctx) => AlertDialog(
+        title: const Text("Da li ste sigurni da želite izbrisati artikal?"),
+        content: const Text("..."),
+        actions: [
+          TextButton(
+            child: const Text("Odustani"),
+            onPressed: () => Navigator.of(ctx).pop(),
+          ),
+          ElevatedButton(
+            child: const Text("Izbriši"),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              if (item.articleId != null) {
+                await articleProvider.delete(item.articleId!);
+                await _loadArticles();
+              }
+            },
+          ),
+        ],
+      ),
     );
   }
 }
 
-/// TabBar sa "pill" indikatorom (narandžasti za izabranu kategoriju)
 class _LeamiTabBar extends StatelessWidget {
   final List<Widget> tabs;
   const _LeamiTabBar({required this.tabs});
@@ -320,7 +231,6 @@ class _LeamiTabBar extends StatelessWidget {
   }
 }
 
-/// Grid za jednu kategoriju – responsivan broj kolona i kartice
 class _CategoryGrid extends StatelessWidget {
   final int categoryId;
   final List<Article> items;
@@ -341,10 +251,9 @@ class _CategoryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (context, box) {
+      builder: (ctx, box) {
         int crossAxisCount = (box.maxWidth / 280).floor();
         if (crossAxisCount < 1) crossAxisCount = 1;
-
         return GridView.builder(
           padding: const EdgeInsets.all(12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -353,8 +262,8 @@ class _CategoryGrid extends StatelessWidget {
             mainAxisSpacing: 12,
             childAspectRatio: 0.9,
           ),
-          itemCount: items.length + 1, // +1 za "Dodaj novi"
-          itemBuilder: (context, index) {
+          itemCount: items.length + 1,
+          itemBuilder: (ctx, index) {
             if (index == 0) {
               return _AddCard(onTap: onAddNew);
             }
@@ -372,7 +281,6 @@ class _CategoryGrid extends StatelessWidget {
   }
 }
 
-/// Kartica za artikal
 class _ArticleCard extends StatelessWidget {
   final Article article;
   final String priceText;
@@ -398,7 +306,6 @@ class _ArticleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final img = _imageFromBase64(article.articleImage);
-
     return Card(
       child: Stack(
         children: [
@@ -452,20 +359,10 @@ class _ArticleCard extends StatelessWidget {
           Positioned(
             top: 6,
             right: 6,
-            child: Material(
-              color: Colors.transparent,
-              child: Ink(
-                decoration: const ShapeDecoration(
-                  color: Color(0x33292F3F), // suptilna tamna pozadina
-                  shape: CircleBorder(),
-                ),
-                child: IconButton(
-                  tooltip: 'Izbriši',
-                  icon: const Icon(Icons.delete),
-                  color: Colors.redAccent,
-                  onPressed: onDelete,
-                ),
-              ),
+            child: IconButton(
+              icon: const Icon(Icons.delete),
+              color: Colors.redAccent,
+              onPressed: onDelete,
             ),
           ),
         ],
@@ -474,7 +371,6 @@ class _ArticleCard extends StatelessWidget {
   }
 }
 
-/// Kartica "Dodaj novi artikal"
 class _AddCard extends StatelessWidget {
   final VoidCallback onTap;
   const _AddCard({required this.onTap});
@@ -498,7 +394,6 @@ class _AddCard extends StatelessWidget {
   }
 }
 
-/// Jednostavna kartica sa vidljivim rubom (solid border umjesto "tačkica")
 class _BorderCard extends StatelessWidget {
   final Widget child;
   const _BorderCard({required this.child});
