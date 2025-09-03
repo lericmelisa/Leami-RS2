@@ -11,10 +11,10 @@ abstract class BaseProvider<T> with ChangeNotifier {
   String _endpoint = "";
 
   BaseProvider(String endpoint) {
-    _endpoint = endpoint; // PAZI NA CASE: "/api/User" vs "User"
+    _endpoint = endpoint;
     _baseUrl = const String.fromEnvironment(
-      'baseUrl',
-      defaultValue: "http://localhost:5139",
+      "baseUrl",
+      defaultValue: "http://localhost:5139 ",
     );
   }
 
@@ -33,7 +33,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
     var headers = getHeaders();
 
     var response = await http.get(uri, headers: headers);
-    print(response.body);
+    debugPrint(response.body);
 
     ensureValidResponseOrThrow(response);
     final data = jsonDecode(response.body);
@@ -45,6 +45,10 @@ abstract class BaseProvider<T> with ChangeNotifier {
     }
 
     throw Exception("Neočekivan JSON format: $data");
+  }
+
+  void clear() {
+    notifyListeners();
   }
 
   Future<T> insert(dynamic request) async {
@@ -81,9 +85,6 @@ abstract class BaseProvider<T> with ChangeNotifier {
     final response = await http.put(uri, headers: headers, body: jsonRequest);
     debugPrint("📤 JSON Request KOJI SALJEM NA SERVER: $jsonRequest");
 
-    // dev.log('Status: ${response.statusCode}', name: 'HTTP');
-    // dev.log('Body: ${response.body}', name: 'HTTP');
-
     ensureValidResponseOrThrow(response);
 
     final data = _safeJsonDecode(response.body);
@@ -106,11 +107,9 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
     ensureValidResponseOrThrow(response);
 
-    // Backend vraća "true" kao string ili bool → samo provjeri
     return response.body.toLowerCase().contains("true");
   }
 
-  /// Umjesto `isValidResponse` koji guta poruke, bacaj Exception s tekstom backenda
   void ensureValidResponseOrThrow(Response response) {
     final code = response.statusCode;
     if (code >= 200 && code <= 299) return;

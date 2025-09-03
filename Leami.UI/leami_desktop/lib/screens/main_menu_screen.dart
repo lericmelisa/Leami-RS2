@@ -1,14 +1,27 @@
 import 'package:flutter/material.dart';
-// === tvoji ekrani (prema listi fajlova) ===
-import 'package:leami_desktop/screens/restaurant_info_screen.dart'; // Opšte postavke
-import 'package:leami_desktop/screens/article_categories_switcher.dart'; // Upravljanje jelovnikom (artikli/kategorije)
-import 'package:leami_desktop/screens/users_list.dart'; // Upravljanje računima (korisnici/uloge)
-import 'package:leami_desktop/screens/reservations_list.dart'; // Rezervacije
-import 'package:leami_desktop/screens/review_list.dart'; // Recenzije
-import 'package:leami_desktop/screens/home_screen.dart'; // Uvid u izvještaje (placeholder)
+import 'package:leami_desktop/main.dart';
+import 'package:leami_desktop/providers/article_category_provider.dart';
+import 'package:leami_desktop/providers/article_provider.dart';
+import 'package:leami_desktop/providers/auth_provider.dart';
+import 'package:leami_desktop/providers/report_provider.dart';
+import 'package:leami_desktop/providers/reservation_provider.dart';
+import 'package:leami_desktop/providers/restaurant_info_provider.dart';
+import 'package:leami_desktop/providers/review_provider.dart';
+import 'package:leami_desktop/providers/user_provider.dart';
+import 'package:leami_desktop/screens/admin_details_screen.dart';
+import 'package:leami_desktop/screens/admin_screen.dart';
+
+import 'package:leami_desktop/screens/report_screen.dart';
+import 'package:leami_desktop/screens/restaurant_info_screen.dart';
+import 'package:leami_desktop/screens/article_categories_switcher.dart';
+import 'package:leami_desktop/screens/user_details_screen.dart';
+import 'package:leami_desktop/screens/users_list.dart';
+import 'package:leami_desktop/screens/reservations_list.dart';
+import 'package:leami_desktop/screens/review_list.dart';
+import 'package:provider/provider.dart';
 
 class MainMenuScreen extends StatefulWidget {
-  const MainMenuScreen({Key? key}) : super(key: key);
+  const MainMenuScreen({super.key});
 
   @override
   State<MainMenuScreen> createState() => _MainMenuScreenState();
@@ -17,7 +30,7 @@ class MainMenuScreen extends StatefulWidget {
 class _MainMenuScreenState extends State<MainMenuScreen> {
   int _current = 0;
 
-  // Definišemo stavke menija
+  // Stavke menija + builderi za stranice (NIŠTA se još ne gradi)
   late final List<_MenuItem> _items = [
     _MenuItem(
       title: 'Opšte postavke',
@@ -47,22 +60,53 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     _MenuItem(
       title: 'Uvid u izvještaje',
       icon: Icons.bar_chart,
-      builder: () => const HomeScreen(),
+      builder: () => const ReportScreen(),
+    ),
+    _MenuItem(
+      title: 'Profil',
+      icon: Icons.verified_user,
+      builder: () => AdminScreen(userId: AuthProvider.user!.id!),
     ),
   ];
 
-  // Mjesto za keširanje izgrađenih ekrana
+  // Keš već izgrađenih stranica (lazy build)
   late final List<Widget?> _pagesCache = List<Widget?>.filled(
     _items.length,
     null,
   );
 
-  // Funkcija za lazy inicijalizaciju pojedinog ekrana
+  // Gradi samo traženu stranicu i kešira je
   Widget _buildPage(int index) {
-    if (_pagesCache[index] == null) {
-      _pagesCache[index] = _items[index].builder();
-    }
+    _pagesCache[index] ??= _items[index].builder();
     return _pagesCache[index]!;
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    // 1) očisti sve providere (imaju clear())
+    for (final p in [
+      context.read<ArticleProvider>(),
+      context.read<ArticleCategoryProvider>(),
+      context.read<UserProvider>(),
+      context.read<ReservationProvider>(),
+      context.read<ReviewProvider>(),
+      context.read<RestaurantInfoProvider>(),
+      context.read<ReportProvider>(),
+    ]) {
+      (p as dynamic).clear();
+    }
+
+    // 2) server-side logout (nije fatalno ako faila)
+    await AuthProvider.logoutApi();
+
+    // 3) lokalni logout (token, user, sl.)
+    AuthProvider.logout();
+
+    // 4) nazad na login i očisti navigator stack
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (route) => false,
+    );
   }
 
   @override
@@ -71,7 +115,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       appBar: AppBar(title: const Text('Leami')),
       body: Row(
         children: [
-          // Lijevi fiksni meni
+          // Lijevi meni
           Container(
             width: 260,
             margin: const EdgeInsets.all(12),
@@ -81,24 +125,37 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               ).colorScheme.surfaceVariant.withOpacity(.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: _items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 4),
-              itemBuilder: (_, i) {
-                final sel = i == _current;
-                final it = _items[i];
-                return _SideTile(
-                  title: it.title,
-                  icon: it.icon,
-                  selected: sel,
-                  onTap: () => setState(() => _current = i),
-                );
-              },
+            child: Column(
+              children: [
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: _items.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 4),
+                    itemBuilder: (_, i) {
+                      final sel = i == _current;
+                      final it = _items[i];
+                      return _SideTile(
+                        title: it.title,
+                        icon: it.icon,
+                        selected: sel,
+                        onTap: () => setState(() => _current = i),
+                      );
+                    },
+                  ),
+                ),
+                const Divider(),
+                _SideTile(
+                  title: 'Odjava',
+                  icon: Icons.logout_rounded,
+                  selected: false,
+                  onTap: () => _logout(context),
+                ),
+              ],
             ),
           ),
 
-          // Desni dio – sadržaj koji se mijenja
+          // Desni sadržaj – **samo aktivna stranica**
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(right: 12, top: 12, bottom: 12),
@@ -108,13 +165,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   color: Theme.of(
                     context,
                   ).colorScheme.surfaceVariant.withOpacity(.06),
-                  child: IndexedStack(
-                    index: _current,
-                    children: List.generate(
-                      _items.length,
-                      (i) => _buildPage(i),
-                    ),
-                  ),
+                  child: _buildPage(_current),
                 ),
               ),
             ),

@@ -3,10 +3,10 @@ part 'article_category.g.dart';
 
 @JsonSerializable()
 class ArticleCategory {
-  int? categoryId;
-  String? categoryName;
+  int categoryId;
+  String categoryName;
 
-  ArticleCategory({this.categoryId = 0, this.categoryName = ''});
+  ArticleCategory({  this.categoryId = 0, this.categoryName = ''});
 
   // factory koji poziva generated funkciju
   factory ArticleCategory.fromJson(Map<String, dynamic> json) =>

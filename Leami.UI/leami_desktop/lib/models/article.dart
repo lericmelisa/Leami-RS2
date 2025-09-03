@@ -4,9 +4,9 @@ part 'article.g.dart';
 
 @JsonSerializable()
 class Article {
-  int? articleId;
-  String? articleName;
-  double? articlePrice;
+  int articleId;
+  String articleName;
+  double articlePrice;
   String? articleDescription;
   String? articleImage;
   int? categoryId;

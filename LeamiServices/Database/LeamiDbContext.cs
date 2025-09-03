@@ -47,17 +47,64 @@ namespace Leami.Services.Database
                 .HasOne(d => d.User).WithOne(u => u.GuestDetails)
                 .HasForeignKey<GuestDetails>(d => d.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+
+           
+            b.Entity<Article>()
+                .HasOne(a => a.Category)
+                .WithMany(c => c.Articles)
+                .OnDelete(DeleteBehavior.Restrict);
+
+           
+            b.Entity<Review>()
+                .HasOne(r => r.ReviewerUser)
+                .WithMany(u => u.Reviews)
+                .HasForeignKey(r => r.ReviewerUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+
+            b.Entity<Notification>()
+                 .HasOne(n => n.Reservation)
+                 .WithMany(r => r.Notifications)
+                 .HasForeignKey(n => n.ReservationId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+            b.Entity<RestaurantInfo>()
+                .HasOne(ri => ri.Admin)
+                .WithOne(u => u.ManagedRestaurant)
+                .HasForeignKey<RestaurantInfo>(ri => ri.AdminUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.Entity<ReportExport>(e =>
+            {
+                e.HasOne(x => x.User)
+                 .WithMany()
+                 .HasForeignKey(x => x.UserId)
+                 .OnDelete(DeleteBehavior.SetNull);
+
+                e.Property(x => x.TopArticlesJson)
+                 .HasColumnType("nvarchar(max)");
+            });
+
+
         }
 
-        public DbSet<City>? Cities { get; set; }
         public DbSet<Article>? Articles { get; set; }
-
+        public DbSet<Category> Categories { get; set; }
         public DbSet<EmployeeDetails> EmployeeDetails { get; set; }
         public DbSet<AdministratorDetails> AdminDetails { get; set; }
         public DbSet<GuestDetails> GuestDetails { get; set; }
         public DbSet<Reservation> Reservations { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<RestaurantInfo> RestaurantInfos { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<ReportExport> ReportExports { get; set; }
+
+
+
+
 
 
 

@@ -8,7 +8,7 @@ part of 'restaurant_info.dart';
 
 RestaurantInfo _$RestaurantInfoFromJson(Map<String, dynamic> json) =>
     RestaurantInfo(
-      restaurantId: (json['restaurantId'] as num?)?.toInt(),
+      restaurantId: (json['restaurantId'] as num?)?.toInt() ?? 0,
       name: json['name'] as String? ?? '',
       description: json['description'] as String?,
       address: json['address'] as String?,

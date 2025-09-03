@@ -49,14 +49,26 @@ class _ArticleCategoryDetailsScreenState
               FormBuilderTextField(
                 name: 'categoryName',
                 decoration: const InputDecoration(labelText: 'Naziv'),
-                validator: FormBuilderValidators.required(
-                  errorText: 'Naziv je obavezan',
-                ),
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.required(
+                    errorText: 'Naziv kategorije je obavezan.',
+                  ),
+                  FormBuilderValidators.minLength(
+                    2,
+                    errorText:
+                        'Naziv kategorije ne može imati manje od 2 znaka.',
+                  ),
+                  FormBuilderValidators.maxLength(
+                    50,
+                    errorText:
+                        'Naziv kategorije ne može imati više od 50 znakova.',
+                  ),
+                ]),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                child: Text(isNew ? 'Kreiraj' : 'Spremi'),
                 onPressed: _save,
+                child: Text(isNew ? 'Kreiraj' : 'Spremi'),
               ),
             ],
           ),
@@ -72,16 +84,32 @@ class _ArticleCategoryDetailsScreenState
     try {
       if (widget.category == null) {
         await _provider.insert({'categoryName': data['categoryName']});
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Kategorija dodana.'),
+            backgroundColor: Colors.green,
+          ),
+        );
       } else {
         await _provider.update(widget.category!.categoryId!, {
           'categoryName': data['categoryName'],
         });
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Kategorija uređena.'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
       Navigator.of(context).pop(true);
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Greška: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Greška: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 }

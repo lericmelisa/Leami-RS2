@@ -56,7 +56,7 @@ namespace Leami.Services.Services
             return MapToResponse(entity);
         }
 
-        protected virtual T MapToResponse(TEntity entity)
+        public virtual T MapToResponse(TEntity entity)
         {
             return _mapper.Map<T>(entity);
 

@@ -17,8 +17,8 @@ namespace Leami.Model.Entities
         public string ArticleName { get; set; } = string.Empty;
         public float ArticlePrice { get; set; }
         public string? ArticleDescription { get; set; }
-        public byte[]? ArticleImage { get; set; }
-        public int? CategoryId { get; set; }
+        public byte[] ArticleImage { get; set; } = Array.Empty<byte>();
+        public int CategoryId { get; set; }
         public Category? Category { get; set; } 
 
         //public List<ArticleOrder> ArticleOrder { get; set; } = new List<ArticleOrder>();    

@@ -101,23 +101,46 @@ class _ArticleDetailsScreenState extends State<ArticleDetailsScreen> {
         children: [
           FormBuilderTextField(
             name: 'articleName',
-            decoration: const InputDecoration(labelText: 'Article Name'),
-            validator: FormBuilderValidators.required(
-              errorText: 'Naziv je obavezan.',
-            ),
+            decoration: const InputDecoration(labelText: 'Naziv artikla'),
+            validator: FormBuilderValidators.compose([
+              FormBuilderValidators.required(
+                errorText: 'Naziv artikla ne može biti prazno.',
+              ),
+              FormBuilderValidators.minLength(
+                2,
+                errorText: "Naziv artikla ne može biti manje od 2 znaka.",
+              ),
+              FormBuilderValidators.maxLength(
+                50,
+                errorText: "Naziv artikla ne može biti više od 50 znakova.",
+              ),
+            ]),
           ),
           const SizedBox(height: 12),
           FormBuilderTextField(
             name: 'articlePrice',
-            decoration: const InputDecoration(labelText: 'Article Price'),
-            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Cijena artikla'),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             validator: FormBuilderValidators.compose([
-              FormBuilderValidators.required(errorText: 'Cijena je obavezna.'),
+              FormBuilderValidators.required(
+                errorText: 'Cijena artikla ne može biti prazna.',
+              ),
               (v) {
                 if (v == null || v.isEmpty) return null;
-                final d = double.tryParse(v.replaceAll(',', '.'));
-                if (d == null) return 'Nevažeći broj';
-                if (d < 0) return 'Mora biti ≥ 0';
+                // ne dozvoljava zarez
+                if (v.contains(',')) {
+                  return 'Koristi tačku umjesto zareza (npr. 14.50).';
+                }
+                // provjera formata: broj, jedna tačka i do 2 decimale
+                final regex = RegExp(r'^\d+(\.\d{1,2})?$');
+                if (!regex.hasMatch(v)) {
+                  return 'Unesi važeću cijenu s tačkom (npr. 14.50).';
+                }
+                final d = double.tryParse(v);
+                if (d == null) return 'Nevažeći broj.';
+                if (d < 0 || d > 1000) {
+                  return 'Cijena artikla može biti u rasponu od 0 do 1000.';
+                }
                 return null;
               },
             ]),
@@ -125,13 +148,13 @@ class _ArticleDetailsScreenState extends State<ArticleDetailsScreen> {
           const SizedBox(height: 12),
           FormBuilderTextField(
             name: 'articleDescription',
-            decoration: const InputDecoration(labelText: 'Article Description'),
+            decoration: const InputDecoration(labelText: 'Opis artikla'),
             maxLines: 3,
           ),
           const SizedBox(height: 12),
           FormBuilderDropdown<int>(
             name: 'categoryId',
-            decoration: const InputDecoration(labelText: 'Category'),
+            decoration: const InputDecoration(labelText: 'Kategorija'),
             items: categories!.items!
                 .map(
                   (c) => DropdownMenuItem(
@@ -140,10 +163,22 @@ class _ArticleDetailsScreenState extends State<ArticleDetailsScreen> {
                   ),
                 )
                 .toList(),
+            validator: FormBuilderValidators.compose([
+              FormBuilderValidators.required(
+                errorText: 'Kategorija je obavezna.',
+              ),
+            ]),
           ),
+
           const SizedBox(height: 12),
           FormBuilderField<String>(
             name: 'articleImage',
+            validator: (val) {
+              // Ako nema postojeće slike i ništa nije birano — greška
+              if ((val == null || val.isEmpty) && _base64Image == null) {
+                return 'Slika artikla je obavezna.';
+              }
+            },
             builder: (field) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,24 +241,30 @@ class _ArticleDetailsScreenState extends State<ArticleDetailsScreen> {
         try {
           if (widget.article == null) {
             await articleProvider.insert(raw);
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Article created.')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Artikal kreiran.'),
+                backgroundColor: Colors.green,
+              ),
+            );
           } else {
             await articleProvider.update(widget.article!.articleId!, raw);
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Article updated.')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Artikal ažuriran.'),
+                backgroundColor: Colors.green,
+              ),
+            );
           }
-          // vratimo `true` da lista zna da treba refresh
+          // vratimo true da lista zna da treba refresh
           Navigator.of(context).pop(true);
         } catch (e) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
         }
       },
-      child: const Text('Save'),
+      child: const Text('Spremi'),
     );
   }
 }

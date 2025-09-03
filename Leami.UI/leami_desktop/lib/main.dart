@@ -4,12 +4,12 @@ import 'package:leami_desktop/models/user.dart';
 import 'package:leami_desktop/providers/article_category_provider.dart';
 import 'package:leami_desktop/providers/article_provider.dart';
 import 'package:leami_desktop/providers/auth_provider.dart';
+import 'package:leami_desktop/providers/report_provider.dart';
 import 'package:leami_desktop/providers/reservation_provider.dart';
 import 'package:leami_desktop/providers/restaurant_info_provider.dart';
 import 'package:leami_desktop/providers/review_provider.dart';
 import 'package:leami_desktop/providers/user_provider.dart';
 import 'package:leami_desktop/providers/user_role_provider.dart';
-import 'package:leami_desktop/screens/home_screen.dart';
 import 'package:leami_desktop/screens/main_menu_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:leami_desktop/theme/theme.dart';
@@ -41,6 +41,9 @@ void main() {
         ChangeNotifierProvider<RestaurantInfoProvider>(
           create: (context) => RestaurantInfoProvider(),
         ),
+        ChangeNotifierProvider<ReportProvider>(
+          create: (context) => ReportProvider(),
+        ),
       ],
       child: const MyApp(),
     ),
@@ -63,20 +66,33 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class LoginPage extends StatelessWidget {
-  LoginPage({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   late SearchResult<User> _users;
   late UserProvider _userProvider;
 
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     _userProvider = context.read<UserProvider>();
 
     return Scaffold(
-      // Scaffold is a layout structure that provides a default app bar, title,
       appBar: AppBar(title: Text('Login Page')),
       body: Center(
         child: Card(
@@ -86,10 +102,11 @@ class LoginPage extends StatelessWidget {
               padding: const EdgeInsets.all(16.00),
               child: Column(
                 children: [
-                  Image.network(
-                    "https://fit.ba/content/763cbb87-718d-4eca-a991-343858daf424",
+                  Image.asset(
+                    'assets/images/leami_logo.png',
                     width: 200,
                     height: 200,
+                    fit: BoxFit.contain,
                   ),
                   TextField(
                     controller: emailController,
@@ -101,9 +118,25 @@ class LoginPage extends StatelessWidget {
                   const SizedBox(height: 10),
                   TextField(
                     controller: passwordController,
+                    obscureText: _obscurePassword,
+                    enableSuggestions: false,
+                    autocorrect: false,
                     decoration: InputDecoration(
                       hintText: 'Password',
-                      icon: Icon(Icons.password),
+                      icon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        tooltip: _obscurePassword
+                            ? 'Prikaži lozinku'
+                            : 'Sakrij lozinku',
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -129,11 +162,10 @@ class LoginPage extends StatelessWidget {
                           filter: {"FTS": email},
                         );
                         User user = _users.items!.first;
-                        print("DOHVACENI USER JE: ${user.firstName}");
+                        debugPrint("DOHVACENI USER JE: ${user.firstName}");
 
                         // 3) provjera role
                         if ((user.role?.name ?? '') != 'Administrator') {
-                          // nije admin → poruka i out
                           await showDialog(
                             context: context,
                             builder: (_) => AlertDialog(

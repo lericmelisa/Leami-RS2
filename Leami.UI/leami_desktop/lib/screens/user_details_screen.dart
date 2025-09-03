@@ -24,6 +24,8 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   String? _base64Image;
   bool providerInitialized = false;
 
+  bool _passwordVisible = false; // 🔒 toggle za prikaz lozinke
+
   late UserProvider userProvider;
   late UserRoleProvider userRoleProvider;
 
@@ -48,6 +50,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
         'hireDate': widget.user!.hireDate,
         'note': widget.user!.note,
         'userImage': widget.user!.userImage,
+        'password': '', //(opcionalna promjena)
       };
 
       _selectedRoleId = widget.user!.role?.id;
@@ -75,6 +78,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
         'hireDate': null,
         'note': '',
         'userImage': null,
+        'password': '',
       };
     }
   }
@@ -139,6 +143,10 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
           raw['userImage'] = _base64Image;
         } else {
           raw['userImage'] = null;
+        }
+        final pass = (raw['password'] as String?)?.trim();
+        if (pass == null || pass.isEmpty) {
+          raw.remove('password');
         }
 
         try {
@@ -249,6 +257,60 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                 name: 'phoneNumber',
                 enabled: widget.user == null,
                 decoration: const InputDecoration(labelText: 'Phone Number'),
+              ),
+            ),
+            // ----- Nova lozinka (opcionalno) -----
+            SizedBox(
+              width: fieldWidth,
+              child: FormBuilderTextField(
+                name: 'password',
+                obscureText: !_passwordVisible, // <- toggle
+                enableSuggestions: false,
+                autocorrect: false,
+                keyboardType: TextInputType.visiblePassword,
+                decoration: InputDecoration(
+                  labelText: 'Nova lozinka (opcionalno)',
+                  suffixIcon: IconButton(
+                    tooltip: _passwordVisible
+                        ? 'Sakrij lozinku'
+                        : 'Prikaži lozinku',
+                    icon: Icon(
+                      _passwordVisible
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _passwordVisible = !_passwordVisible;
+                      });
+                    },
+                  ),
+                ),
+                validator: (value) {
+                  final v = (value ?? '').trim();
+                  if (v.isEmpty) {
+                    return null; // prazno = ne mijenja lozinku
+                  }
+                  if (v.length < 8) {
+                    return 'Lozinka mora imati najmanje 8 znakova.';
+                  }
+                  final hasLower = RegExp(r'[a-z]').hasMatch(v);
+                  if (!hasLower) {
+                    return 'Lozinka mora sadržavati barem jedno malo slovo.';
+                  }
+                  final hasUpper = RegExp(r'[A-Z]').hasMatch(v);
+                  if (!hasUpper) {
+                    return 'Lozinka mora sadržavati barem jedno veliko slovo.';
+                  }
+                  final hasDigit = RegExp(r'\d').hasMatch(v);
+                  if (!hasDigit) {
+                    return 'Lozinka mora sadržavati barem jedan broj.';
+                  }
+
+                  // Specijalni znak nije potreban jer je RequireNonAlphanumeric = false
+
+                  return null;
+                },
               ),
             ),
             SizedBox(

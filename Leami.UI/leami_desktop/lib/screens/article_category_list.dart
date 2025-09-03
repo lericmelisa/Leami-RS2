@@ -40,7 +40,7 @@ class _ArticleCategoryListState extends State<ArticleCategoryList> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _error = "Greška pri učitavanju: $e";
+        _error = "Greška pri učitavanju: \$e";
       });
     }
   }
@@ -48,26 +48,89 @@ class _ArticleCategoryListState extends State<ArticleCategoryList> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return Center(child: Text(_error!));
-
     final list = _categories?.items ?? [];
+    return Column(
+      children: [
+        // search + buttons
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Pretraži po nazivu kategorije',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(50),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  onSubmitted: (_) => _onSearch(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _onSearch,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                ),
+                child: const Text('Pretraga'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const ArticleCategoryDetailsScreen(category: null),
+                    ),
+                  );
+                  if (result == true) _loadCategories();
+                },
 
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const SizedBox.shrink(),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildSearch(),
-            const SizedBox(height: 16),
-            Expanded(
+                label: const Text('Dodaj'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        // no categories placeholder
+        if (list.isEmpty)
+          Expanded(
+            child: Center(
+              child: Text(
+                'Nema dostupnih kategorija.',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          )
+        else
+          // table
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Card(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
+                    showCheckboxColumn: false,
                     columns: const [
                       DataColumn(label: Text('Naziv')),
                       DataColumn(label: Text('Akcije')),
@@ -78,11 +141,12 @@ class _ArticleCategoryListState extends State<ArticleCategoryList> {
                           DataCell(Text(c.categoryName ?? '')),
                           DataCell(
                             Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
                                   icon: const Icon(
                                     Icons.edit,
-                                    color: Colors.blue,
+                                    color: Colors.blueAccent,
                                   ),
                                   onPressed: () async {
                                     final result = await Navigator.push<bool>(
@@ -100,7 +164,7 @@ class _ArticleCategoryListState extends State<ArticleCategoryList> {
                                 IconButton(
                                   icon: const Icon(
                                     Icons.delete,
-                                    color: Colors.red,
+                                    color: Colors.redAccent,
                                   ),
                                   onPressed: () => _confirmDelete(c),
                                 ),
@@ -114,46 +178,14 @@ class _ArticleCategoryListState extends State<ArticleCategoryList> {
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () async {
-          final result = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  const ArticleCategoryDetailsScreen(category: null),
-            ),
-          );
-          if (result == true) _loadCategories();
-        },
-      ),
+          ),
+      ],
     );
   }
 
-  Widget _buildSearch() {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _searchController,
-            decoration: const InputDecoration(
-              hintText: 'Pretraži po nazivu kategorije',
-              prefixIcon: Icon(Icons.search),
-            ),
-            onSubmitted: (_) =>
-                _loadCategories({"FTS": _searchController.text}),
-          ),
-        ),
-        const SizedBox(width: 8),
-        ElevatedButton(
-          child: const Text('Pretraga'),
-          onPressed: () => _loadCategories({"FTS": _searchController.text}),
-        ),
-      ],
-    );
+  void _onSearch() {
+    _loadCategories({'FTS': _searchController.text.trim()});
+    _searchController.clear();
   }
 
   void _confirmDelete(ArticleCategory c) {
@@ -161,7 +193,7 @@ class _ArticleCategoryListState extends State<ArticleCategoryList> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Brisanje kategorije'),
-        content: Text('Obrisati "${c.categoryName}"?'),
+        content: Text('Obrisati "\${c.categoryName}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -172,11 +204,24 @@ class _ArticleCategoryListState extends State<ArticleCategoryList> {
               Navigator.pop(context);
               try {
                 await _provider.delete(c.categoryId!);
-                _loadCategories();
+                await _loadCategories();
               } catch (e) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Greška: $e')));
+                // error handling
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Ne možete izbrisati'),
+                    content: const Text(
+                      'Kategorija sadrži artikle. Molimo prvo izbrišite ili premjestite artikle iz ove kategorije.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
               }
             },
             child: const Text('Izbriši'),

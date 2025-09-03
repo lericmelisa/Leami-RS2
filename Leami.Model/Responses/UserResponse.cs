@@ -18,7 +18,7 @@ namespace Leami.Model.Responses
         public DateTime? LastLoginAt { get; set; }
         public string? PhoneNumber { get; set; }
 
-        public RolesResponse? Role { get; set; } = new();
+        public RolesResponse Role { get; set; } = new();
 
         public string Token { get; set; } = "";
         public DateTime Expiration { get; set; }

@@ -16,6 +16,7 @@ namespace Leami.Services.IServices
     public interface IUserService : ICRUDService<UserResponse, UserSearchObject, UserRegistrationRequest, UserUpdateRequest>
     {
         Task<UserResponse?> LoginAsync(UserLoginRequest request);
+        Task LogoutAsync();
         //Task<IdentityResult> RegisterAsync(RegisterDto dto);
         //Task<SignInResult> LoginAsync(LoginDto dto);
         //Task LogoutAsync();

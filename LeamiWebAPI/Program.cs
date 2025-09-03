@@ -1,5 +1,5 @@
-﻿using Leami.Model;
-using Leami.Services.Database;
+﻿using Leami.Services.Database;
+using Leami.Services.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 using Leami.Model.Entities;
 using Microsoft.AspNetCore.Identity;
@@ -11,27 +11,69 @@ using System.Text;
 using Microsoft.OpenApi.Models;
 using Leami.Services.Services;
 using Leami.Services.IServices;
-using LeamiWebAPI.Controllers;
+using Stripe;
+using RabbitMQ.Client;
+using DotNetEnv;
+using QuestPDF;
+using QuestPDF.Infrastructure;
+using System.Security.Claims;
 
 
 
 var builder = WebApplication.CreateBuilder(args);
+var contentRoot = builder.Environment.ContentRootPath;
+
+var candidates = new[]
+{
+    Path.Combine(contentRoot, ".env"),
+    Path.GetFullPath(Path.Combine(contentRoot, "..", ".env")),
+    Path.GetFullPath(Path.Combine(contentRoot, "..", "..", ".env")),
+};
+
+var envFile = candidates.FirstOrDefault(System.IO.File.Exists);
+if (envFile != null)
+{
+    DotNetEnv.Env.Load(envFile); // učita u process env
+}
+
+
+builder.Configuration
+       .SetBasePath(Directory.GetCurrentDirectory())
+       .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+       .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+       .AddEnvironmentVariables();  // .env varijable su sada u OS env
+
+
+// Register StripeService
+var stripeSecret =
+    builder.Configuration["Stripe:SecretKey"]
+    ?? Environment.GetEnvironmentVariable("Stripe__SecretKey")
+    ?? throw new InvalidOperationException("Missing Stripe:SecretKey");
+
+StripeConfiguration.ApiKey = stripeSecret;
+builder.Services.AddScoped<StripeService>();
+builder.Logging.AddConsole();
 
 
 // registracija Mapstera
+QuestPDF.Settings.License = LicenseType.Community;
+
 builder.Services.AddSingleton(TypeAdapterConfig.GlobalSettings);
 builder.Services.AddScoped<IMapper, ServiceMapper>();
 
+builder.Services.AddSingleton<IRabbitMQService, RabbitMQConnectionManager>();
 
-
+builder.Services.AddTransient<IReservationService, ReservationService>();
 
 builder.Services.AddScoped<IArticleService, ArticleService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
-builder.Services.AddScoped<IReservationService, ReservationService>();
-builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IReviewService, ReviewLService>();
 builder.Services.AddScoped<IRestaurantInfo, RestaurantInfoService>();
+builder.Services.AddScoped<IOrderLService, OrderLService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 
 
@@ -43,24 +85,32 @@ builder.Services.AddDatabaseServices(connectionString);
 
 
 
-
 builder.Services.AddIdentity<User, Role>(options =>
 {
+    // USER
     options.User.RequireUniqueEmail = true;
-    //setovanje pravila
+
+    // PASSWORD POLICY
+    options.Password.RequiredLength = 8;          // min dužina
+    options.Password.RequireDigit = true;         // mora imati broj
+    options.Password.RequireLowercase = true;     // malo slovo
+    options.Password.RequireUppercase = true;     // veliko slovo
+    options.Password.RequireNonAlphanumeric = false; //  spec. znak false
+    options.Password.RequiredUniqueChars = 1;     // različitih znakova
+
 }).AddEntityFrameworkStores<LeamiDbContext>().AddDefaultTokenProviders();
 
-
+builder.Services.AddHttpContextAccessor();
 
 // Add services to the container.var
 
-var jwtSection = builder.Configuration.GetSection("Jwt");
-var jwtIssuer = jwtSection.GetValue<string>("Issuer")
-                   ?? throw new InvalidOperationException("Missing Jwt:Issuer");
-var jwtAudience = jwtSection.GetValue<string>("Audience")
-                   ?? throw new InvalidOperationException("Missing Jwt:Audience");
-var jwtKey = jwtSection.GetValue<string>("Key")
-                   ?? throw new InvalidOperationException("Missing Jwt:Key");
+var jwt = builder.Configuration.GetSection("Jwt");
+var jwtKey = jwt["Key"];
+var jwtIssuer = jwt["Issuer"];
+var jwtAudience = jwt["Audience"];
+var jwtExpire = int.Parse(jwt["ExpireMinutes"] ?? "60");
+
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -78,7 +128,39 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtIssuer,
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(
-                                     Encoding.UTF8.GetBytes(jwtKey))
+                                     Encoding.UTF8.GetBytes(jwtKey)),
+        ClockSkew = TimeSpan.FromSeconds(30)
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async ctx =>
+        {
+            var userManager = ctx.HttpContext.RequestServices.GetRequiredService<UserManager<User>>();
+
+            var email = ctx.Principal?.FindFirstValue(ClaimTypes.NameIdentifier)
+                   ?? ctx.Principal?.FindFirstValue(ClaimTypes.Email);
+
+            var tokenStamp = ctx.Principal?.FindFirst("sstamp")?.Value;
+
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(tokenStamp))
+            {
+                ctx.Fail("Missing email or security stamp.");
+                return;
+            }
+
+            // ❗ Tražimo po e-mailu, NE po Id-u
+            var user = await userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                ctx.Fail("User not found.");
+                return;
+            }
+
+            if (!string.Equals(user.SecurityStamp, tokenStamp, StringComparison.Ordinal))
+            {
+                ctx.Fail("Token revoked.");
+            }
+        }
     };
 });
 
@@ -127,6 +209,16 @@ builder.Services.AddSwaggerGen(c =>
 
 
 var app = builder.Build();
+
+
+static string Mask(string? s)
+    => string.IsNullOrEmpty(s) || s.Length < 8 ? "****" : $"{s[..4]}...{s[^4..]}";
+
+if (app.Environment.IsDevelopment())
+{
+    app.Logger.LogInformation("Stripe key loaded: {Key}", Mask(stripeSecret));
+}
+
 
 
 await using (var scope = app.Services.CreateAsyncScope())

@@ -16,15 +16,18 @@ class ArticleList extends StatefulWidget {
   State<ArticleList> createState() => _ArticleListState();
 }
 
-class _ArticleListState extends State<ArticleList> {
+class _ArticleListState extends State<ArticleList>
+    with SingleTickerProviderStateMixin {
   late ArticleProvider articleProvider;
   late ArticleCategoryProvider articleCategoryProvider;
+  TabController? _tabController;
 
   SearchResult<Article>? articles;
   SearchResult<ArticleCategory>? categories;
 
-  Map<int, ArticleCategory> categoryMap = {};
   final TextEditingController searchController = TextEditingController();
+  int selectedIndex = 0;
+  int? highlightedArticleId;
 
   @override
   void didChangeDependencies() {
@@ -37,224 +40,261 @@ class _ArticleListState extends State<ArticleList> {
   Future<void> _initData() async {
     await _loadCategories();
     await _loadArticles();
+    final length = categories?.items?.length ?? 0;
+    if (length > 0) {
+      _tabController = TabController(length: length, vsync: this);
+      selectedIndex = 0;
+    }
+    setState(() {});
   }
 
   Future<void> _loadCategories() async {
     try {
       categories = await articleCategoryProvider.get();
-      categoryMap = {
-        for (var c in (categories?.items ?? []))
-          if (c.categoryId != null) c.categoryId!: c,
-      };
-      if (mounted) setState(() {});
     } catch (e) {
       debugPrint('Error loading categories: $e');
     }
   }
 
-  Future<void> _loadArticles([Map<String, dynamic>? filter]) async {
+  Future<void> _loadArticles() async {
     try {
-      articles = await articleProvider.get(filter: filter);
-      if (mounted) setState(() {});
+      articles = await articleProvider.get();
     } catch (e) {
       debugPrint('Error loading articles: $e');
     }
   }
 
+  Future<void> _performSearch(String term) async {
+    final trimmed = term.trim().toLowerCase();
+    if (trimmed.isEmpty) {
+      setState(() => highlightedArticleId = null);
+      return;
+    }
+    Article? match;
+    for (var a in articles?.items ?? []) {
+      if (a.articleName?.toLowerCase().contains(trimmed) ?? false) {
+        match = a;
+        break;
+      }
+    }
+    if (match != null && _tabController != null) {
+      final catIndex = categories!.items!.indexWhere(
+        (c) => c.categoryId == match?.categoryId,
+      );
+      if (catIndex != -1) {
+        highlightedArticleId = match.articleId;
+        _tabController!.index = catIndex;
+        setState(() => selectedIndex = catIndex);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          searchController.clear();
+        });
+      }
+    }
+  }
+
+  List<Article> _filterItemsForCategory(int catId) {
+    return (articles?.items ?? []).where((a) => a.categoryId == catId).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const SizedBox.shrink(),
+    if (_tabController == null || categories == null) {
+      return const Center(
+        child: Text(
+          'Nema dostupnih kategorija, te zbog toga ne možete dodati artikle. Prvo dodaje kategoriju, pa će dodavanje artikala biti omogućeno.',
+          style: TextStyle(fontSize: 16),
+        ),
+      );
+    }
+    final catList = categories!.items!;
+    if (catList.isEmpty) {
+      return const Center(
+        child: Text(
+          'Nema dostupnih kategorija niti artikala.',
+          style: TextStyle(fontSize: 16),
+        ),
+      );
+    }
+    return Column(
+      children: [
+        _buildSearch(),
+        const SizedBox(height: 8),
+        Expanded(child: _buildResultView(catList)),
+      ],
+    );
+  }
+
+  Widget _buildSearch() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    child: Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: searchController,
+            decoration: const InputDecoration(
+              hintText: 'Pretražite artikle po nazivu',
+            ),
+            onSubmitted: (_) => _performSearch(searchController.text),
+          ),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: () => _performSearch(searchController.text),
+          child: const Text('Pretraga'),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: () async {
+            final res = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const ArticleDetailsScreen(article: null),
+              ),
+            );
+            if (res == true) {
+              await _loadArticles();
+              setState(() {});
+            }
+          },
+          child: const Text('Dodaj'),
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildResultView(List<ArticleCategory> catList) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        labelColor: Colors.orange,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        indicator: BoxDecoration(borderRadius: BorderRadius.circular(999)),
+        indicatorSize: TabBarIndicatorSize.label,
+        unselectedLabelColor: Colors.white70,
+        tabs: [for (var c in catList) Tab(text: c.categoryName!)],
+        onTap: (idx) => setState(() {
+          selectedIndex = idx;
+          highlightedArticleId = null;
+          searchController.clear();
+        }),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      const SizedBox(height: 8),
+      Expanded(
+        child: TabBarView(
+          controller: _tabController,
           children: [
-            _buildSearch(),
-            const SizedBox(height: 16),
-            Expanded(child: _buildResultView()),
+            for (var i = 0; i < catList.length; i++)
+              _CategoryGrid(
+                categoryId: catList[i].categoryId!,
+                items: _filterItemsForCategory(catList[i].categoryId!),
+                highlightedArticleId: (i == selectedIndex)
+                    ? highlightedArticleId
+                    : null,
+                onAddNew: () async {
+                  final res = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ArticleDetailsScreen(article: null),
+                    ),
+                  );
+                  if (res == true) {
+                    await _loadArticles();
+                    setState(() {});
+                  }
+                },
+                onEdit: (art) async {
+                  final res = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ArticleDetailsScreen(article: art),
+                    ),
+                  );
+                  if (res == true) {
+                    await _loadArticles();
+                    setState(() {});
+                  }
+                },
+                onDelete: (art) async {
+                  await articleProvider.delete(art.articleId!);
+                  await _loadArticles();
+                  setState(() {});
+                },
+              ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSearch() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: searchController,
-              decoration: const InputDecoration(
-                hintText: 'Pretražite artikle po nazivu',
-              ),
-              onSubmitted: (_) async {
-                await _loadArticles({"ArticleName": searchController.text});
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () =>
-                _loadArticles({"ArticleName": searchController.text}),
-            child: const Text("Pretraga"),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ArticleDetailsScreen(article: null),
-                ),
-              );
-              if (result == true) {
-                await _loadArticles();
-              }
-            },
-            child: const Text("Dodaj novi"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResultView() {
-    if (categories == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    final catList = categories!.items ?? [];
-    if (catList.isEmpty) {
-      return const Center(child: Text('Nema dostupnih kategorija.'));
-    }
-
-    return DefaultTabController(
-      length: catList.length,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _LeamiTabBar(
-            tabs: [
-              for (final c in catList)
-                Tab(text: c.categoryName ?? 'Kategorija'),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: TabBarView(
-              children: [
-                for (final c in catList)
-                  _CategoryGrid(
-                    categoryId: c.categoryId!,
-                    items: (articles?.items ?? [])
-                        .where((a) => a.categoryId == c.categoryId)
-                        .toList(),
-                    onAddNew: () async {
-                      final result = await Navigator.push<bool>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              const ArticleDetailsScreen(article: null),
-                        ),
-                      );
-                      if (result == true) await _loadArticles();
-                    },
-                    onEdit: (article) async {
-                      final result = await Navigator.push<bool>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ArticleDetailsScreen(article: article),
-                        ),
-                      );
-                      if (result == true) await _loadArticles();
-                    },
-                    onDelete: _showDeleteArticleDialog,
-                    getCategoryName: (id) =>
-                        categoryMap[id]?.categoryName ?? 'N/A',
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteArticleDialog(Article item) {
-    showDialog(
-      barrierDismissible: false,
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Da li ste sigurni da želite izbrisati artikal?"),
-        content: const Text("..."),
-        actions: [
-          TextButton(
-            child: const Text("Odustani"),
-            onPressed: () => Navigator.of(ctx).pop(),
-          ),
-          ElevatedButton(
-            child: const Text("Izbriši"),
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              if (item.articleId != null) {
-                await articleProvider.delete(item.articleId!);
-                await _loadArticles();
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
+    ],
+  );
 }
 
-class _LeamiTabBar extends StatelessWidget {
-  final List<Widget> tabs;
-  const _LeamiTabBar({required this.tabs});
-
-  @override
-  Widget build(BuildContext context) {
-    return TabBar(
-      isScrollable: true,
-      labelPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      indicator: BoxDecoration(borderRadius: BorderRadius.circular(999)),
-      indicatorSize: TabBarIndicatorSize.label,
-      unselectedLabelColor: Colors.white70,
-      tabs: tabs,
-    );
-  }
-}
-
-class _CategoryGrid extends StatelessWidget {
+class _CategoryGrid extends StatefulWidget {
   final int categoryId;
   final List<Article> items;
+  final int? highlightedArticleId;
   final VoidCallback onAddNew;
   final void Function(Article) onEdit;
   final void Function(Article) onDelete;
-  final String Function(int) getCategoryName;
 
   const _CategoryGrid({
+    Key? key,
     required this.categoryId,
     required this.items,
     required this.onAddNew,
     required this.onEdit,
     required this.onDelete,
-    required this.getCategoryName,
-  });
+    this.highlightedArticleId,
+  }) : super(key: key);
+
+  @override
+  State<_CategoryGrid> createState() => _CategoryGridState();
+}
+
+class _CategoryGridState extends State<_CategoryGrid> {
+  final ScrollController _scrollController = ScrollController();
+  late int crossAxisCount;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CategoryGrid old) {
+    super.didUpdateWidget(old);
+    if (widget.highlightedArticleId != null) {
+      final idx = widget.items.indexWhere(
+        (a) => a.articleId == widget.highlightedArticleId,
+      );
+      if (idx != -1) {
+        final gridIndex = idx + 1; // zbog AddCard
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final row = (gridIndex / crossAxisCount).floor();
+          const itemHeight = 300.0;
+          const spacing = 12.0;
+          final offset = row * (itemHeight + spacing);
+          _scrollController.animateTo(
+            offset,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (ctx, box) {
-        int crossAxisCount = (box.maxWidth / 280).floor();
-        if (crossAxisCount < 1) crossAxisCount = 1;
+        crossAxisCount = (box.maxWidth / 280).floor().clamp(
+          1,
+          (box.maxWidth / 280).floor(),
+        );
         return GridView.builder(
+          controller: _scrollController,
           padding: const EdgeInsets.all(12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
@@ -262,17 +302,25 @@ class _CategoryGrid extends StatelessWidget {
             mainAxisSpacing: 12,
             childAspectRatio: 0.9,
           ),
-          itemCount: items.length + 1,
+          itemCount: widget.items.length + 1,
           itemBuilder: (ctx, index) {
-            if (index == 0) {
-              return _AddCard(onTap: onAddNew);
-            }
-            final article = items[index - 1];
-            return _ArticleCard(
-              article: article,
-              priceText: formatNumber(article.articlePrice),
-              onEdit: () => onEdit(article),
-              onDelete: () => onDelete(article),
+            if (index == 0) return _AddCard(onTap: widget.onAddNew);
+            final article = widget.items[index - 1];
+            final isHighlighted =
+                article.articleId == widget.highlightedArticleId;
+            return Container(
+              decoration: isHighlighted
+                  ? BoxDecoration(
+                      border: Border.all(color: Colors.blueAccent, width: 3),
+                      borderRadius: BorderRadius.circular(16),
+                    )
+                  : null,
+              child: _ArticleCard(
+                article: article,
+                priceText: formatNumber(article.articlePrice),
+                onEdit: () => widget.onEdit(article),
+                onDelete: () => widget.onDelete(article),
+              ),
             );
           },
         );
@@ -288,11 +336,12 @@ class _ArticleCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   const _ArticleCard({
+    Key? key,
     required this.article,
     required this.priceText,
     required this.onEdit,
     required this.onDelete,
-  });
+  }) : super(key: key);
 
   ImageProvider? _imageFromBase64(String? b64) {
     if (b64 == null || b64.isEmpty) return null;
@@ -307,6 +356,7 @@ class _ArticleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final img = _imageFromBase64(article.articleImage);
     return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Stack(
         children: [
           Padding(
@@ -362,7 +412,30 @@ class _ArticleCard extends StatelessWidget {
             child: IconButton(
               icon: const Icon(Icons.delete),
               color: Colors.redAccent,
-              onPressed: onDelete,
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Brisanje artikla'),
+                    content: const Text(
+                      'Jeste li sigurni da želite izbrisati ovaj artikal?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('Odustani'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          Navigator.of(ctx).pop();
+                          onDelete();
+                        },
+                        child: const Text('Izbriši'),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -373,7 +446,7 @@ class _ArticleCard extends StatelessWidget {
 
 class _AddCard extends StatelessWidget {
   final VoidCallback onTap;
-  const _AddCard({required this.onTap});
+  const _AddCard({Key? key, required this.onTap}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +469,7 @@ class _AddCard extends StatelessWidget {
 
 class _BorderCard extends StatelessWidget {
   final Widget child;
-  const _BorderCard({required this.child});
+  const _BorderCard({Key? key, required this.child}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

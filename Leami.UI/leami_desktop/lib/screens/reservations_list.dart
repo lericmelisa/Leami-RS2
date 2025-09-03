@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:leami_desktop/providers/auth_provider.dart';
+import 'package:leami_desktop/models/reservation.dart';
+import 'package:leami_desktop/models/search_result.dart';
+import 'package:leami_desktop/providers/reservation_provider.dart';
 import 'package:provider/provider.dart';
-import '../models/reservation.dart';
-import '../models/search_result.dart';
-import '../providers/reservation_provider.dart';
 
 class ReservationList extends StatefulWidget {
   const ReservationList({super.key});
@@ -15,15 +16,21 @@ class _ReservationListState extends State<ReservationList> {
   late ReservationProvider reservationProvider;
   SearchResult<Reservation>? reservations;
 
-  final TextEditingController searchController = TextEditingController();
-
-  final ScrollController _vCtrl = ScrollController(); // vertical
-  final ScrollController _hCtrl = ScrollController(); // horizontal
+  final _vCtrl = ScrollController();
+  final _hCtrl = ScrollController();
 
   bool _isLoading = true;
   String? _error;
-
   bool _showActive = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      reservationProvider = context.read<ReservationProvider>();
+      _loadReservations({"IsExpired": false});
+    });
+  }
 
   @override
   void dispose() {
@@ -32,30 +39,25 @@ class _ReservationListState extends State<ReservationList> {
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      reservationProvider = context.read<ReservationProvider>();
-      _loadReservations();
-    });
-  }
-
   Future<void> _loadReservations([Map<String, dynamic>? filter]) async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
-      setState(() => _isLoading = true);
       reservations = await reservationProvider.get(filter: filter);
-      setState(() => _isLoading = false);
     } catch (e) {
-      setState(() {
-        _error = "Greška prilikom učitavanja rezervacija: $e";
-        _isLoading = false;
-      });
+      _error = "Greška pri učitavanju rezervacija: $e";
+    } finally {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return Center(child: Text(_error!));
 
@@ -65,9 +67,49 @@ class _ReservationListState extends State<ReservationList> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              _buildTopButtons(),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() => _showActive = true);
+                        _loadReservations({"IsExpired": false});
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _showActive
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.secondary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                      ),
+                      child: const Text('Aktivne'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() => _showActive = false);
+                        _loadReservations({"IsExpired": true});
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: !_showActive
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.secondary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                      ),
+                      child: const Text('Istekle'),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
-              Expanded(child: _buildResultView()),
+              Expanded(child: _buildTable()),
             ],
           ),
         ),
@@ -75,183 +117,134 @@ class _ReservationListState extends State<ReservationList> {
     );
   }
 
-  Widget _buildTopButtons() {
-    return Row(
-      children: [
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _showActive
-                ? Theme.of(context).colorScheme.primary
-                : null,
-          ),
-          onPressed: () {
-            setState(() => _showActive = true);
-            // Aktivne = isExpired = false
-            _loadReservations({"IsExpired": false});
-          },
-          child: const Text("Aktivne"),
-        ),
-        const SizedBox(width: 12),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: !_showActive
-                ? Theme.of(context).colorScheme.primary
-                : null,
-          ),
-          onPressed: () {
-            setState(() => _showActive = false);
-            // Istekle = isExpired = true
-            _loadReservations({"IsExpired": true});
-          },
-          child: const Text("Istekle"),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildResultView() {
+  Widget _buildTable() {
     final list = reservations?.items ?? const <Reservation>[];
     if (list.isEmpty) {
       return const Center(child: Text("Nema rezervacija za prikaz."));
     }
 
-    final columns = <DataColumn>[
-      const DataColumn(label: Text('Datum rezervacije')),
-      const DataColumn(label: Text('Vrijeme rezervacije')),
-      const DataColumn(label: Text('Broj osoba')),
-      const DataColumn(label: Text('Korisnik')),
-      const DataColumn(label: Text('Specijalni zahtjevi')),
-      const DataColumn(label: Text('Odobri')),
-      const DataColumn(label: Text('Akcije')),
-    ];
+    // Minimalna širina (zbir širina kolona) da forsiramo horizontalni skrol kad je prozor uzak
+    // Datum(140) | Vrijeme(120) | Osobe(80) | Korisnik(200) | Zahtjevi(420) | Status/Approve(160) | Akcije(120)
+    const double contentMinWidth = 140 + 120 + 80 + 200 + 420 + 160 + 120;
 
-    final now = DateTime.now();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewportW = constraints.maxWidth;
+        final needsHScroll = contentMinWidth > viewportW;
+        final tableWidth = needsHScroll ? contentMinWidth : viewportW;
 
-    return Card(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return Scrollbar(
-            thumbVisibility: false,
-            controller: _vCtrl,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              primary: false,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                primary: false,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    columnSpacing: 16,
-                    columns: columns,
-                    rows: list.map((r) {
-                      // Parsiraj datum iz stringa
-                      DateTime? date = r.reservationDate != null
-                          ? DateTime.tryParse(r.reservationDate!)
-                          : null;
-                      // Ako je datum manji od danas, riječ je o istekloj
-                      final isExpired =
-                          date != null &&
-                          date.isBefore(DateTime(now.year, now.month, now.day));
+        final columns = const [
+          DataColumn(label: Text('Datum rezervacije')),
+          DataColumn(label: Text('Vrijeme rezervacije')),
+          DataColumn(label: Text('Broj osoba')),
+          DataColumn(label: Text('Korisnik')),
+          DataColumn(label: Text('Specijalni zahtjevi')),
+          DataColumn(label: Text('Odobri')),
+          DataColumn(label: Text('Akcije')),
+        ];
 
-                      // Disable ako je već odobreno ili isteklo
-                      final canApprove = !isExpired && r.reservationStatus != 1;
+        final rows = list.map((r) {
+          final dateTxt = r.reservationDate ?? '-';
+          final timeTxt = r.reservationTime ?? '-';
+          final peopleTxt = (r.numberOfGuests?.toString() ?? '-');
+          // Ako nemaš korisnika u modelu rezervacije, fallback na trenutnog (kao što si imala):
+          final userTxt = (AuthProvider.user?.firstName ?? 'Nepoznat');
 
-                      return DataRow(
-                        cells: [
-                          DataCell(
-                            Text(
-                              r.reservationDate ?? '-',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              r.reservationTime ?? '-',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              r.numberOfGuests?.toString() ?? '-',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              r.user?.firstName ?? 'Nepoznat',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              r.specialRequests ?? '-',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          DataCell(
-                            ElevatedButton(
-                              onPressed: canApprove
-                                  ? () => _showApproveDialog(r)
-                                  : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: canApprove
-                                    ? (r.reservationStatus == 1
-                                          ? Colors.green
-                                          : Theme.of(
-                                              context,
-                                            ).colorScheme.primary)
-                                    : Colors
-                                          .grey, // ili null pa ostavi default disabled
-                              ),
-                              child: Text(
-                                r.reservationStatus == 1
-                                    ? 'Odobreno'
-                                    : (isExpired ? 'Isteklo' : 'Odobri'),
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _showDeleteDialog(r),
-                            ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
+          // status: 1=Potvrđeno, 0=Odbijeno, ostalo=Na čekanju
+          final isConfirmed = r.reservationStatus == 1;
+          final isRejected = r.reservationStatus == 0;
+          final isPending = !(isConfirmed || isRejected);
+
+          final approveBtn = ElevatedButton(
+            onPressed: isPending ? () => _showDecisionDialog(r) : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isConfirmed
+                  ? Colors.green
+                  : (isRejected
+                        ? Colors.grey
+                        : Theme.of(context).colorScheme.primary),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(50),
+              ),
+            ),
+            child: Text(
+              isConfirmed
+                  ? 'Potvrđeno'
+                  : (isRejected ? 'Odbijeno' : 'Odobri/Odbij'),
+            ),
+          );
+
+          return DataRow(
+            cells: [
+              DataCell(_cell(dateTxt, maxW: 140)),
+              DataCell(_cell(timeTxt, maxW: 120)),
+              DataCell(_cell(peopleTxt, maxW: 80, center: true)),
+              DataCell(_cell(userTxt, maxW: 200)),
+              DataCell(_cell(r.specialRequests ?? '-', maxW: 420)),
+              DataCell(SizedBox(width: 160, child: approveBtn)),
+              DataCell(
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 120),
+                  child: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.redAccent),
+                    onPressed: () => _showDeleteDialog(r),
+                    tooltip: 'Izbriši',
                   ),
                 ),
               ),
-            ),
+            ],
           );
-        },
-      ),
+        }).toList();
+
+        final table = SizedBox(
+          width: tableWidth,
+          child: SingleChildScrollView(
+            controller: _vCtrl,
+            scrollDirection: Axis.vertical,
+            primary: false,
+            child: DataTable(
+              columnSpacing: 18,
+              dataRowMinHeight: 40,
+              dataRowMaxHeight: 56,
+              headingRowHeight: 48,
+              showCheckboxColumn: false,
+              columns: columns,
+              rows: rows,
+            ),
+          ),
+        );
+
+        return Card(
+          child: needsHScroll
+              ? Scrollbar(
+                  controller: _hCtrl,
+                  thumbVisibility: true,
+                  interactive: true,
+                  notificationPredicate: (n) =>
+                      n.metrics.axis == Axis.horizontal,
+                  child: SingleChildScrollView(
+                    controller: _hCtrl,
+                    scrollDirection: Axis.horizontal,
+                    primary: false,
+                    child: table,
+                  ),
+                )
+              : table,
+        );
+      },
     );
   }
 
-  void _showApproveDialog(Reservation r) {
-    if (r.reservationStatus == 1) return;
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Odobri rezervaciju"),
-        content: const Text(
-          "Da li ste sigurni da želite odobriti ovu rezervaciju?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text("Ne"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _approveReservation(r);
-            },
-            child: const Text("Da"),
-          ),
-        ],
+  // Helper za tekstualnu ćeliju sa max širinom + elipsama
+  Widget _cell(String text, {required double maxW, bool center = false}) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxW),
+      child: Text(
+        text,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
+        textAlign: center ? TextAlign.center : TextAlign.start,
       ),
     );
   }
@@ -266,16 +259,16 @@ class _ReservationListState extends State<ReservationList> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.pop(context),
             child: const Text("Odustani"),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.of(context).pop();
+              Navigator.pop(context);
               if (r.reservationId != null) {
                 try {
                   await reservationProvider.delete(r.reservationId!);
-                  await _loadReservations();
+                  await _loadReservations({"IsExpired": !_showActive});
                 } catch (e) {
                   _showError("Greška prilikom brisanja: $e");
                 }
@@ -288,14 +281,43 @@ class _ReservationListState extends State<ReservationList> {
     );
   }
 
-  Future<void> _approveReservation(Reservation r) async {
-    if (r.reservationId == null) return;
+  void _showDecisionDialog(Reservation r) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Status rezervacije"),
+        content: const Text(
+          "Da li želite odobriti ili odbiti ovu rezervaciju?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              r.reservationStatus = 0;
+              _changeStatus(r);
+            },
+            child: const Text("Odbij"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              r.reservationStatus = 1;
+              _changeStatus(r);
+            },
+            child: const Text("Potvrdi"),
+          ),
+        ],
+      ),
+    );
+  }
 
+  Future<void> _changeStatus(Reservation r) async {
+    if (r.reservationId == null) return;
     final body = {
       "reservationDate": r.reservationDate,
       "reservationTime": r.reservationTime,
       "numberOfGuests": r.numberOfGuests,
-      "reservationStatus": 1,
+      "reservationStatus": r.reservationStatus,
       "userId": r.userId,
       "reservationReason": r.reservationReason,
       "numberOfMinors": r.numberOfMinors,
@@ -305,9 +327,9 @@ class _ReservationListState extends State<ReservationList> {
 
     try {
       await reservationProvider.update(r.reservationId!, body);
-      await _loadReservations();
+      await _loadReservations({"IsExpired": !_showActive});
     } catch (e) {
-      _showError("Greška prilikom odobravanja: $e");
+      _showError("Greška prilikom akcije: $e");
     }
   }
 

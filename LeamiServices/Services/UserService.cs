@@ -3,24 +3,19 @@ using Leami.Model.Requests;
 using Leami.Model.Responses;
 using Leami.Model.SearchObjects;
 using Leami.Services.Database;
+using Leami.Services.Database.Entities;
+using Leami.Services.Migrations;
 using Leami.Services.Services;
-using Mapster;
 using MapsterMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
-using static System.Net.WebRequestMethods;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+
 
 
 namespace Leami.Services.IServices
@@ -42,6 +37,36 @@ namespace Leami.Services.IServices
             _context = leamiDbContext;
             _configuration = configuration;
             _http = http;
+        }
+
+
+ 
+        public override async Task<UserResponse> GetByIdAsync(int id)
+        {
+            var entity = await _context.Users
+       .Include(u => u.UserRoles)
+       .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (entity == null)
+                return null;
+
+            var roleNames = await _userManager.GetRolesAsync(entity);
+
+            var roleDtos = await _roleManager.Roles
+                   .Where(r => roleNames.Contains(r.Name))
+                   .Select(r => new RolesResponse
+                   {
+                       Roleid = r.Id,
+                       RoleName = r.Name!,
+                       Description = r.Description
+                   })
+            .ToListAsync();
+
+            var response = mapper.Map<UserResponse>(entity);
+           
+            response.Role = roleDtos.FirstOrDefault();
+
+            return response;
         }
         protected override IQueryable<User> ApplyFilter(IQueryable<User> query, UserSearchObject search)
         {
@@ -107,11 +132,14 @@ namespace Leami.Services.IServices
                     {
                         Roleid = roleEntityNull.Id,
                         RoleName = roleEntityNull.Name!,
-                        Description = roleEntityNull.Description
+                        Description = roleEntityNull.Description,
+                        
                     };
                 }
                 dtoNull.JobTitle = user.EmployeeDetails?.JobTitle;
                 dtoNull.HireDate = user.EmployeeDetails?.HireDate;
+           
+
                 dtoNull.Note = user.EmployeeDetails?.Note;
                 return dtoNull;
             }
@@ -135,10 +163,8 @@ namespace Leami.Services.IServices
             }
 
             // Ako se pošalje slika, ali je prazna (0 bajtova) – ne diraj
-            if (req.UserImage != null && req.UserImage.Length > 0)
-                user.UserImage = req.UserImage;
-
-            // 2) Promjena lozinke — samo ako je POSLANA i NIJE prazna
+            user.UserImage = req.UserImage;
+            // Promjena lozinke — samo ako je POSLANA i NIJE prazna
             if (!string.IsNullOrWhiteSpace(req.Password))
             {
                 var hasPassword = await _userManager.HasPasswordAsync(user);
@@ -198,16 +224,21 @@ namespace Leami.Services.IServices
                 // ne mijenjamo role
                 targetRoleNames = currentRoleNames;
             }
+         
+            if (!string.IsNullOrWhiteSpace(req.PhoneNumber))
+            {               
+                await _userManager.SetPhoneNumberAsync(user, req.PhoneNumber.Trim());
+            }
 
-            // 4) 1–1 *Details* — mijenjaj samo ako su polja poslata (null/prazno = ne diraj)
+
+            
             await EnsureDetailsForRolesAsync(user, targetRoleNames, req);
-            // (u EnsureDetailsForRolesAsync budi sigurna da radiš provjere: 
-            //  if (req.JobTitle != null) ..., if (req.HireDate != null) ..., if (req.Note != null) ...)
+            
 
-            // 5) Sačuvaj
+            
             await _context.SaveChangesAsync();
 
-            // 6) Mapiraj iz AŽURIRANOG entiteta i dopuni Role/EmployeeDetails iz baze (ne iz req)
+           
             var dto = mapper.Map<UserResponse>(user);
 
             var roleNames = await _userManager.GetRolesAsync(user);
@@ -223,7 +254,7 @@ namespace Leami.Services.IServices
                 {
                     Roleid = roleEntity.Id,
                     RoleName = roleEntity.Name!,
-                    Description = roleEntity.Description
+                    Description = roleEntity?.Description
                 };
             }
             else
@@ -231,7 +262,7 @@ namespace Leami.Services.IServices
                 dto.Role = null;
             }
 
-            // EmployeeDetails flatten IZ BAZE (ostavi ako je req imao prazno/null)
+            
             dto.JobTitle = user.EmployeeDetails?.JobTitle;
             dto.HireDate = user.EmployeeDetails?.HireDate;
             dto.Note = user.EmployeeDetails?.Note;
@@ -456,39 +487,36 @@ namespace Leami.Services.IServices
         }
         public async Task<UserResponse?> LoginAsync(UserLoginRequest request)
         {
-            // 1) Dohvati korisnika po korisničkom imenu (ili e-mailu, kako god)
             var user = await _userManager.FindByEmailAsync(request.Email);
-            if (user is null)
-                return null;
-
-            // 2) Provjeri lozinku (Identity interno radi PBKDF2 hash+salt)
-            if (!await _userManager.CheckPasswordAsync(user, request.Password))
-                return null;
+            if (user is null) return null;
 
 
-            // 3) Ažuriraj podatak o zadnjem loginu
+            var valid = await _userManager.CheckPasswordAsync(user, request.Password);
+            if (!valid) return null;
+
+
             user.LastLoginAt = DateTime.UtcNow;
             await _userManager.UpdateAsync(user);
 
+            var roleNames = await _userManager.GetRolesAsync(user);
 
+            var roleDtos = await _roleManager.Roles
+                   .Where(r => roleNames.Contains(r.Name))
+                   .Select(r => new RolesResponse
+                   {
+                       Roleid = r.Id,
+                       RoleName = r.Name!,
+                       Description = r.Description
+                   })
+                   .ToListAsync();
 
-            // 4) Mapiraj osnovne podatke u response DTO
             var response = mapper.Map<UserResponse>(user);
             response.LastLoginAt = user.LastLoginAt;
 
-            // 5) Učitaj role korisnika
-            var roleNames = await _userManager.GetRolesAsync(user);
 
-            // 6) Dohvati Role entitete da vidiš Id i Description
-            var roleEntities = await _roleManager.Roles
-                .Where(r => roleNames.Contains(r.Name))
-                .ToListAsync();
-
-
-
+            response.Role = roleDtos.FirstOrDefault();
 
             (response.Token, response.Expiration) = await GenerateJwtAsync(user);
-
             return response;
 
         }
@@ -496,15 +524,18 @@ namespace Leami.Services.IServices
         {
             // 1) uloge
             var roleNames = await _userManager.GetRolesAsync(user);
+            var securityStamp = user.SecurityStamp ?? string.Empty;
 
             // 2) claimovi (Sub = subject = email; Jti = jedinstveni ID tokena)
             var authClaims = new List<Claim>
-    {
-        new Claim(JwtRegisteredClaimNames.Sub, user.Email ?? user.UserName ?? user.Id.ToString()),
-        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(ClaimTypes.Name, user.Email ?? user.UserName ?? string.Empty)
-    };
+             {
+                 new Claim(JwtRegisteredClaimNames.Sub, user.Email ?? user.UserName ?? user.Id.ToString()),
+                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                 new Claim(ClaimTypes.NameIdentifier, user.Email ?? string.Empty),
+                 new Claim(ClaimTypes.Name, user.Email ?? user.UserName ?? string.Empty),
+                 new Claim("sstamp", securityStamp),
+                 new Claim("uid", user.Id.ToString())
+             };
             authClaims.AddRange(roleNames.Select(r => new Claim(ClaimTypes.Role, r)));
 
             // 3) parametri iz konfiguracije
@@ -513,7 +544,7 @@ namespace Leami.Services.IServices
             var keyBytes = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
             var expireMinutes = double.Parse(_configuration["Jwt:ExpireMinutes"]!);
 
-            var expires = DateTime.Now.AddMinutes(expireMinutes);
+            var expires = DateTime.UtcNow.AddMinutes(expireMinutes);
 
             // 4) potpis + token
             var creds = new SigningCredentials(new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256);
@@ -528,7 +559,18 @@ namespace Leami.Services.IServices
 
             return (new JwtSecurityTokenHandler().WriteToken(jwt), jwt.ValidTo);
         }
+        public async Task LogoutAsync()
+        {
+            var email = _http.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? _http.HttpContext?.User?.FindFirstValue(ClaimTypes.Email);
 
+            if (string.IsNullOrWhiteSpace(email)) return;
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null) return;
+
+            await _userManager.UpdateSecurityStampAsync(user); 
+        }
         public override async Task<List<UserResponse>> GetAsync(UserSearchObject search)
         {
             var baseResult = await base.GetAsync(search);

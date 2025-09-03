@@ -11,7 +11,7 @@ namespace Leami.Model.SearchObjects
     public string? ArticleName { get; set; }
         public string? ArticleNameGTE { get; set; }
         public string? FTSA { get; set; }
-
+        public int? CategoryId { get; set; }
 
     }
 }

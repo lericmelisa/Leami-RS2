@@ -27,6 +27,11 @@ namespace Leami.Services.Services
 
         protected override IQueryable<Article> ApplyFilter(IQueryable<Article> query, ArticleSearchObject search)
         {
+
+            if (search.CategoryId.HasValue)
+            {
+                query = query.Where(a => a.CategoryId == search.CategoryId.Value);
+            }
             if (!string.IsNullOrEmpty(search.ArticleName))
             {
                 query = query.Where(pt => pt.ArticleName.Contains(search.ArticleName));

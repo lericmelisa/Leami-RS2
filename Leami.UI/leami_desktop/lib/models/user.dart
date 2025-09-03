@@ -5,10 +5,10 @@ part 'user.g.dart';
 
 @JsonSerializable()
 class User {
-  int? id;
-  String? firstName;
-  String? lastName;
-  String? email;
+  int id;
+  String firstName;
+  String lastName;
+  String email;
   String? username;
   UserRole? role;
 
@@ -31,26 +31,29 @@ class User {
 
   String? note;
 
-  /// Može biti null ako nema slike
   String? userImage;
 
   User({
-    required this.id,
-    this.firstName,
-    this.lastName,
-    this.email,
-    this.username,
-    this.role,
-    this.createdAt,
-    this.lastLoginAt,
-    this.phoneNumber,
-    this.token,
-    this.expiration,
+    this.id = 0,
+    this.firstName = "",
+    this.lastName = "",
+    this.email = "",
+    this.username = "",
+    UserRole? role,
+    DateTime? createdAt,
+    DateTime? lastLoginAt,
+    this.phoneNumber = "",
+    this.token = "",
+    DateTime? expiration,
     this.userImage,
-    this.jobTitle,
-    this.hireDate,
-    this.note,
-  });
+    this.jobTitle = "",
+    DateTime? hireDate,
+    this.note = "",
+  }) : role = role ?? UserRole(),
+       createdAt = createdAt ?? DateTime.now(),
+       lastLoginAt = lastLoginAt ?? DateTime.now(),
+       expiration = expiration ?? DateTime.now(),
+       hireDate = hireDate ?? DateTime.now();
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
   Map<String, dynamic> toJson() => _$UserToJson(this);

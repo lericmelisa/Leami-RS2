@@ -8,8 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LeamiWebAPI.Controllers
 {
-    [ApiController]
-    [Route("[controller]")]
+   
     public class ArticleController : BaseCRUDController<ArticleResponse, ArticleSearchObject,ArticleInsertRequest,ArticleInsertRequest>
     {
         public readonly IArticleService articleService;

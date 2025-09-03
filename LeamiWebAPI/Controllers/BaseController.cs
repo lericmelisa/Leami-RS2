@@ -18,11 +18,13 @@ namespace LeamiWebAPI.Controllers
         {
             _service = service;
         }
+        [Authorize]
         [HttpGet("")]
         public async Task<List<T>> GetAsync([FromQuery] TSearch? searchTerm=null)
         {
             return await _service.GetAsync(searchTerm?? new TSearch());
         }
+        [Authorize]
         [HttpGet("{id}")]
         public async Task<T?> GetByIdAsync(int id)
         {

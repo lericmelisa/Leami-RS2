@@ -19,20 +19,23 @@ namespace LeamiWebAPI.Controllers
         {
             _crudService = service;
         }
-   
+
+        [Authorize]
         [HttpPost] 
         public virtual async Task<T> Create([FromBody] TInsert request)
         {
             return await _crudService.CreateAsync(request);
         }
 
+        [Authorize]
         [HttpPut("{id}")]
-        public async Task<T> Update(int id, [FromBody] TUpdate request)
+        public virtual async Task<T> Update(int id, [FromBody] TUpdate request)
         {
             return await _crudService.UpdateAsync(id, request);
         }
+        [Authorize]
         [HttpDelete]
-        public async Task<bool> Delete(int id)
+        public virtual async Task<bool> Delete(int id)
         {
             return await _crudService.DeleteAsync(id);
         }

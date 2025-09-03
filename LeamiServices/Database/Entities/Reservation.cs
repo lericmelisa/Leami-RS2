@@ -28,7 +28,9 @@ namespace Leami.Services.Database.Entities
 
         public string ContactPhone { get; set; } = null!;
 
-        public string? SpeciaLRequests { get; set; } 
+        public string? SpeciaLRequests { get; set; }
+
+        public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
     }
 }

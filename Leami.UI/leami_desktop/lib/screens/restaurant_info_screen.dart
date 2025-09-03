@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 import 'restaurant_info_details.dart';
 
 class RestaurantInfoListScreen extends StatefulWidget {
-  const RestaurantInfoListScreen({Key? key}) : super(key: key);
+  const RestaurantInfoListScreen({super.key});
 
   @override
   State<RestaurantInfoListScreen> createState() =>
@@ -26,7 +26,15 @@ class _RestaurantInfoListScreenState extends State<RestaurantInfoListScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _provider = context.read<RestaurantInfoProvider>();
-    _loadInfo();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _provider = context.read<RestaurantInfoProvider>();
+      _loadInfo();
+    });
   }
 
   Future<void> _loadInfo() async {

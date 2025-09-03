@@ -10,7 +10,7 @@ using Leami.Model.Responses;
 using Leami.Model.SearchObjects;
 namespace Leami.Services.IServices
 {
-    public interface IReservationService : ICRUDService<ReservationResponse, ReservationSearchObject, ReservationInsertRequest, ReservationUpdateRequest>
+    public interface IReservationService : ICRUDService<ReservationResponse, ReservationSearchObject,ReservationInsertRequest, ReservationUpdateRequest>
     {
     }
 }

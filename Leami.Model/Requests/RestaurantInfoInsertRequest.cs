@@ -11,20 +11,22 @@ namespace Leami.Model.Requests
     public class RestaurantInfoInsertRequest
     {
     
-            // Iako je singleton, korisnik može promijeniti naziv
             [Required(ErrorMessage = "Naziv restorana je obavezan.")]
-            [StringLength(100, ErrorMessage = "Naziv ne smije biti dulji od 100 znakova.")]
+            [MinLength(2, ErrorMessage = "Naziv ne smije biti kraći od 2 znaka.")]
+            [StringLength(50, ErrorMessage = "Naziv ne smije biti duži od 50 znakova.")]
             public string Name { get; set; } = string.Empty;
 
-            [StringLength(1000, ErrorMessage = "Opis ne smije biti dulji od 1000 znakova.")]
+            [StringLength(1000, ErrorMessage = "Opis ne smije biti dulji od 100 znakova.")]
             public string? Description { get; set; }
 
-            [StringLength(200, ErrorMessage = "Adresa ne smije biti dulja od 200 znakova.")]
+            [Required(ErrorMessage = "Adresa restorana je obavezna.")]
+            [StringLength(100, ErrorMessage = "Adresa ne smije biti dulja od 100 znakova.")]
             public string? Address { get; set; }
 
+            [Required(ErrorMessage = "Telefon restorana je obavezan.")]
             [Phone(ErrorMessage = "Neispravan format telefona.")]
             [StringLength(50, ErrorMessage = "Telefon ne smije biti dulji od 50 znakova.")]
-            public string? Phone { get; set; }
+            public string Phone { get; set; }
 
             public byte[]? RestaurantImage { get; set; }
 

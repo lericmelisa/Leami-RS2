@@ -5,25 +5,25 @@ part 'review.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class Review {
-  int? reviewId;
-  int? reviewerUserId;
-  int? rating;
+  int reviewId;
+  int reviewerUserId;
+  int rating;
   String? comment;
-  DateTime? createdAt;
+  DateTime createdAt;
   User? reviewerUser;
-  bool? isDeleted;
+  bool isDeleted;
   String? deletionReason;
 
   Review({
-    this.reviewId,
-    this.reviewerUserId,
-    this.rating,
-    this.comment,
-    this.createdAt,
+    this.reviewId = 0,
+    this.reviewerUserId = 0,
+    this.rating = 0,
+    this.comment = "",
+    DateTime? createdAt,
     this.reviewerUser,
-    this.isDeleted,
-    this.deletionReason,
-  });
+    this.isDeleted = false,
+    this.deletionReason = "",
+  }) : createdAt = createdAt ?? DateTime.now();
 
   factory Review.fromJson(Map<String, dynamic> json) => _$ReviewFromJson(json);
   Map<String, dynamic> toJson() => _$ReviewToJson(this);

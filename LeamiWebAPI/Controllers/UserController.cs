@@ -55,7 +55,13 @@ namespace LeamiWebAPI.Controllers
             if (result == null) return Unauthorized();
             return Ok(result);
         }
-
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromServices] IUserService users)
+        {
+            await users.LogoutAsync();
+            return Ok();
+        }
 
 
 

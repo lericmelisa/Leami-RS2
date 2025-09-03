@@ -178,9 +178,21 @@ class _RestaurantInfoDetailsScreenState
               FormBuilderTextField(
                 name: 'name',
                 decoration: const InputDecoration(labelText: 'Naziv restorana'),
-                validator: FormBuilderValidators.required(
-                  errorText: 'Naziv je obavezan',
-                ),
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.required(
+                    errorText: 'Naziv restorana ne može biti prazan.',
+                  ),
+                  FormBuilderValidators.minLength(
+                    2,
+                    errorText:
+                        'Naziv restorana ne može imati manje od 2 znaka.',
+                  ),
+                  FormBuilderValidators.maxLength(
+                    50,
+                    errorText:
+                        'Naziv restorana ne može imati više od 50 znakova.',
+                  ),
+                ]),
               ),
 
               const SizedBox(height: 16),
@@ -191,18 +203,29 @@ class _RestaurantInfoDetailsScreenState
                   labelText: 'Kratki opis (description)',
                 ),
                 maxLines: 3,
-                validator: FormBuilderValidators.maxLength(1000),
+                validator: FormBuilderValidators.compose([
+                  // ako prazno => nema greške
+                  (value) {
+                    if (value == null || value.isEmpty) return null;
+                    if (value.length > 100) {
+                      return 'Opis može imati najviše 100 znakova.';
+                    }
+                    return null;
+                  },
+                ]),
               ),
-
               const SizedBox(height: 16),
-              // 4) Adresa & Telefon
               Row(
                 children: [
                   Expanded(
                     child: FormBuilderTextField(
                       name: 'address',
                       decoration: const InputDecoration(labelText: 'Adresa'),
-                      validator: FormBuilderValidators.maxLength(200),
+                      validator: FormBuilderValidators.maxLength(
+                        100,
+                        errorText:
+                            'Adresa je obavezna i može imati najviše 100 znakova.',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -211,10 +234,15 @@ class _RestaurantInfoDetailsScreenState
                       name: 'phone',
                       decoration: const InputDecoration(labelText: 'Telefon'),
                       validator: FormBuilderValidators.compose([
-                        FormBuilderValidators.maxLength(50),
+                        FormBuilderValidators.maxLength(
+                          50,
+                          errorText:
+                              'Telefon je obavezan i može imati najviše 50 znakova.',
+                        ),
                         FormBuilderValidators.match(
                           RegExp(r'^\+?[0-9 ]+$'),
-                          errorText: 'Neispravan format telefona',
+                          errorText:
+                              'Neispravan format telefona (koristi cifre i opcionalno +).',
                         ),
                       ]),
                     ),
@@ -232,7 +260,9 @@ class _RestaurantInfoDetailsScreenState
                     // Picker za otvaranje
                     FormBuilderField<Duration>(
                       name: 'openingSpan',
-                      validator: FormBuilderValidators.required(),
+                      validator: FormBuilderValidators.required(
+                        errorText: 'Vrijeme otvaranja je obavezno.',
+                      ),
                       builder: (field) {
                         final dur = field.value ?? const Duration(hours: 9);
                         return InkWell(
@@ -268,7 +298,9 @@ class _RestaurantInfoDetailsScreenState
                     // Picker za zatvaranje
                     FormBuilderField<Duration>(
                       name: 'closingSpan',
-                      validator: FormBuilderValidators.required(),
+                      validator: FormBuilderValidators.required(
+                        errorText: 'Vrijeme zatvaranja je obavezno.',
+                      ),
                       builder: (field) {
                         final dur = field.value ?? const Duration(hours: 17);
                         return InkWell(
@@ -321,12 +353,23 @@ class _RestaurantInfoDetailsScreenState
     if (!(_formKey.currentState?.saveAndValidate() ?? false)) return;
     final raw = Map<String, dynamic>.from(_formKey.currentState!.value);
 
-    // Durations -> stringovi
-    final openDur = raw.remove('openingSpan') as Duration;
-    final closeDur = raw.remove('closingSpan') as Duration;
+    final openDur = raw['openingSpan'] as Duration;
+    final closeDur = raw['closingSpan'] as Duration;
+    if (closeDur <= openDur) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Vrijeme zatvaranja mora biti poslije vremena otvaranja.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    raw.remove('openingSpan');
+    raw.remove('closingSpan');
     raw['openingTime'] = _formatSpan(openDur);
     raw['closingTime'] = _formatSpan(closeDur);
-
     // Slika
     if (_base64Image != null) {
       raw['restaurantImage'] = _base64Image;

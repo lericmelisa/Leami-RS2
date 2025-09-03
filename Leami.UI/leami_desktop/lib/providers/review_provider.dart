@@ -16,7 +16,6 @@ class ReviewProvider extends BaseProvider<Review> {
     required int reviewId,
     required String deletionReason,
   }) async {
-    // Sada imamo pristup preko javnih gettera:
     final uri = Uri.parse('$baseUrl/$endpoint/softDelete');
 
     final dto = ReviewSoftDeleteRequest(
