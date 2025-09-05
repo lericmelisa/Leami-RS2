@@ -14,7 +14,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
     _endpoint = endpoint;
     _baseUrl = const String.fromEnvironment(
       "baseUrl",
-      defaultValue: "http://localhost:5139 ",
+      defaultValue: "http://localhost:5139",
     );
   }
 
@@ -88,6 +88,9 @@ abstract class BaseProvider<T> with ChangeNotifier {
     ensureValidResponseOrThrow(response);
 
     final data = _safeJsonDecode(response.body);
+    if (data is Map<String, dynamic>) {
+      AuthProvider.applyAuthFromDto(data); // ⟵ OVDE POKUPIŠ NOVI TOKEN
+    }
     return fromJson(data);
   }
 

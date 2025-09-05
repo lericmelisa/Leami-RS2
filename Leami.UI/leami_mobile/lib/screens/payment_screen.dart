@@ -1,9 +1,12 @@
+import 'dart:async';
+import 'dart:developer' as dev;
+
 import 'package:flutter/material.dart';
 import 'package:leami_mobile/models/order.dart';
 import 'package:leami_mobile/models/order_item.dart';
 import 'package:leami_mobile/models/review.dart';
 import 'package:leami_mobile/models/search_result.dart';
-import 'package:leami_mobile/models/stripe_service.dart';
+import 'package:leami_mobile/providers/stripe_service.dart';
 import 'package:leami_mobile/providers/auth_provider.dart';
 import 'package:leami_mobile/providers/order_provider.dart';
 import 'package:leami_mobile/providers/review_provider.dart';
@@ -12,7 +15,7 @@ import 'package:provider/provider.dart';
 import 'package:leami_mobile/providers/cart_provider.dart';
 
 class PaymentScreen extends StatefulWidget {
-  const PaymentScreen({Key? key}) : super(key: key);
+  const PaymentScreen({super.key});
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
@@ -24,7 +27,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   late OrderProvider orderpr;
   late ReviewProvider reviewProvider;
-  late OrderRequest orderRequest;
 
   SearchResult<Review>? reviews;
 
@@ -55,7 +57,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Order Summary Card
+                  // Pregled narudžbe
                   Card(
                     elevation: 2,
                     child: Padding(
@@ -71,8 +73,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             ),
                           ),
                           const Divider(height: 20),
-
-                          // Lista artikala
                           ...cart.itemsList.map(
                             (item) => Padding(
                               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -97,10 +97,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                               ),
                             ),
                           ),
-
                           const Divider(height: 20),
-
-                          // Ukupno
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -128,7 +125,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
                   const SizedBox(height: 20),
 
-                  // Payment Method Selection
+                  // Način plaćanja
                   Card(
                     elevation: 2,
                     child: Padding(
@@ -145,7 +142,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           ),
                           const SizedBox(height: 12),
 
-                          // Stripe Payment Option
+                          // Kartica (Stripe)
                           Container(
                             decoration: BoxDecoration(
                               border: Border.all(
@@ -159,11 +156,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             child: RadioListTile<String>(
                               value: 'stripe',
                               groupValue: _selectedPaymentMethod,
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedPaymentMethod = value!;
-                                });
-                              },
+                              onChanged: (value) => setState(
+                                () => _selectedPaymentMethod = value!,
+                              ),
                               title: Row(
                                 children: [
                                   Icon(
@@ -194,16 +189,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                       ],
                                     ),
                                   ),
-                                  Image.asset(
-                                    'assets/images/stripe_logo.png', // Dodajte Stripe logo
-                                    height: 24,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return const Icon(
-                                        Icons.payment,
-                                        size: 24,
-                                      );
-                                    },
-                                  ),
+                                  const SizedBox(width: 12),
                                 ],
                               ),
                             ),
@@ -211,7 +197,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
                           const SizedBox(height: 12),
 
-                          // Cash on Delivery Option (opciono)
+                          // Plaćanje kešom
                           Container(
                             decoration: BoxDecoration(
                               border: Border.all(
@@ -225,15 +211,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             child: RadioListTile<String>(
                               value: 'cod',
                               groupValue: _selectedPaymentMethod,
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedPaymentMethod = value!;
-                                });
-                              },
+                              onChanged: (value) => setState(
+                                () => _selectedPaymentMethod = value!,
+                              ),
                               title: Row(
                                 children: [
                                   Icon(
-                                    Icons.local_shipping,
+                                    Icons.payments_rounded,
                                     color: Theme.of(
                                       context,
                                     ).colorScheme.primary,
@@ -245,13 +229,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Plaćanje pri dostavi',
+                                          'Plaćanje kešom',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                         Text(
-                                          'Platite gotovinom kada stigne dostava',
+                                          'Platite kešom prilikom preuzimanja',
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.grey,
@@ -271,7 +255,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
                   const SizedBox(height: 20),
 
-                  // Security Info
+                  // Info o sigurnosti
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -301,7 +285,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           ),
 
-          // Bottom Payment Button
+          // Dugme za plaćanje
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -322,7 +306,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ElevatedButton(
                     onPressed: _isProcessing || cart.items.isEmpty
                         ? null
-                        : () => _processPayment(context, cart),
+                        : () => _onPayPressed(context, cart),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -355,7 +339,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             ),
                           ),
                   ),
-
                   if (_selectedPaymentMethod == 'stripe') ...[
                     const SizedBox(height: 8),
                     const Text(
@@ -373,71 +356,102 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  // NOVO: handler koji otvara confirm modal prije stvarnog plaćanja
+  Future<void> _onPayPressed(BuildContext context, CartProvider cart) async {
+    final confirmed = await _showConfirmOrderDialog(
+      context,
+      amount: cart.totalPrice,
+      isStripe: _selectedPaymentMethod == 'stripe',
+    );
+    if (confirmed != true) return;
+    await _processPayment(context, cart);
+  }
+
+  // NOVO: confirm modal sa X u gornjem desnom uglu
+  Future<bool?> _showConfirmOrderDialog(
+    BuildContext context, {
+    required double amount,
+    required bool isStripe,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          titlePadding: const EdgeInsets.fromLTRB(24, 16, 12, 0),
+          title: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Potvrda narudžbe',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Zatvori',
+                splashRadius: 18,
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(ctx).pop(false),
+              ),
+            ],
+          ),
+          content: Text(
+            'Jeste li sigurni da želite zaključiti narudžbu?\n'
+            '${isStripe ? 'Način plaćanja: kartica (Stripe)\n' : 'Način plaćanja: keš\n'}'
+            'Iznos: ${amount.toStringAsFixed(2)} KM',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Odustani'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(isStripe ? 'Plati' : 'Zaključi'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _processPayment(BuildContext context, CartProvider cart) async {
-    setState(() {
-      _isProcessing = true;
-    });
+    setState(() => _isProcessing = true);
+    dev.log(
+      'PAYMENT START: method=$_selectedPaymentMethod, total=${cart.totalPrice}',
+      name: 'PAY',
+    );
 
     try {
       if (_selectedPaymentMethod == 'stripe') {
-        // Stripe Payment
+        dev.log('Calling StripeService.processPayment...', name: 'PAY');
+
+        // Timeout kao sigurnosna mreža da ne visi beskonačno
         final success = await StripeService.processPayment(
           amount: cart.totalPrice,
-          currency: 'usd',
-        );
+          currency: 'usd', // uskladi s backend-om
+        ).timeout(const Duration(seconds: 60));
 
-        if (success) {
-          final orderRequest = OrderRequest(
-            userId: AuthProvider.Id!,
-            orderDate: DateTime.now(),
-            totalAmount: cart.totalPrice,
-            paymentMethod: _selectedPaymentMethod,
-            items: cart.itemsList
-                .map(
-                  (item) => OrderItemRequest(
-                    articleId: item.id,
-                    quantity: item.quantity,
-                    unitPrice: item.price,
-                  ),
-                )
-                .toList(),
-          );
-          await orderpr.insert(orderRequest);
-          _showPaymentSuccess(context, cart);
-          if (mounted) {
-            try {
-              final existingReview = reviews!.items!.firstWhere(
-                (review) => review.reviewerUserId == 3,
-              );
+        dev.log('Stripe returned: $success', name: 'PAY');
 
-              // If a review is found, navigate to the review screen for editing
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      GuestReviewScreen(existingReview: existingReview),
-                ),
-              );
-            } catch (e) {
-              // If no review is found, navigate to the review screen to create a new review
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const GuestReviewScreen(),
-                ),
-              );
-            }
-          }
+        if (!success) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Plaćanje otkazano.')));
+          if (mounted) setState(() => _isProcessing = false);
+          return; // bez ordera
         }
-      } else if (_selectedPaymentMethod == 'cod') {
-        // Cash on Delivery - samo potvrdi narudžbu
+
+        // --- KREIRAJ NARUDŽBU ---
         final orderRequest = OrderRequest(
-          userId: 3,
-          // AuthProvider.Id!,
+          userId: AuthProvider.user!.id,
           orderDate: DateTime.now(),
           totalAmount: cart.totalPrice,
           paymentMethod: _selectedPaymentMethod,
-          items: cart.itemsList
+          orderItems: cart.itemsList
               .map(
                 (item) => OrderItemRequest(
                   articleId: item.id,
@@ -447,113 +461,137 @@ class _PaymentScreenState extends State<PaymentScreen> {
               )
               .toList(),
         );
-        await orderpr.insert(orderRequest);
-        await Future.delayed(
-          const Duration(seconds: 2),
-        ); // Simulacija API poziva
-        _showOrderConfirmation(context, cart);
-        if (mounted) {
-          try {
-            final existingReview = reviews!.items!.firstWhere(
-              (review) => review.reviewerUserId == 3,
-            );
 
-            // If a review is found, navigate to the review screen for editing
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    GuestReviewScreen(existingReview: existingReview),
-              ),
-            );
-          } catch (e) {
-            // If no review is found, navigate to the review screen to create a new review
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const GuestReviewScreen(),
-              ),
-            );
-          }
-        }
+        dev.log('Creating order via API...', name: 'PAY');
+        await orderpr.insert(orderRequest).timeout(const Duration(seconds: 25));
+        dev.log('Order created OK', name: 'PAY');
+
+        // --- VAŽNO: spusti spinner PRIJE dijaloga/navigacije ---
+        if (mounted) setState(() => _isProcessing = false);
+
+        _showPaymentSuccess(context, cart);
+        _navigateToReviewIfAny(context);
+      } else if (_selectedPaymentMethod == 'cod') {
+        // Kreiraj isti request i kod keša
+        final orderRequest = OrderRequest(
+          userId: AuthProvider.user!.id,
+          orderDate: DateTime.now(),
+          totalAmount: cart.totalPrice,
+          paymentMethod: _selectedPaymentMethod,
+          orderItems: cart.itemsList
+              .map(
+                (item) => OrderItemRequest(
+                  articleId: item.id,
+                  quantity: item.quantity,
+                  unitPrice: item.price,
+                ),
+              )
+              .toList(),
+        );
+
+        dev.log('Creating order via API (COD)...', name: 'PAY');
+        await orderpr.insert(orderRequest).timeout(const Duration(seconds: 25));
+        dev.log('Order created OK (COD)', name: 'PAY');
+
+        if (mounted) setState(() => _isProcessing = false);
+        await Future.delayed(const Duration(seconds: 1));
+        _showOrderConfirmation(context, cart);
+        _navigateToReviewIfAny(context);
       }
-    } catch (e) {
+    } on TimeoutException {
+      if (mounted) setState(() => _isProcessing = false);
+      _showPaymentError(
+        context,
+        'Zahtjev je istekao (timeout). Provjeri mrežu/Stripe.',
+      );
+    } catch (e, st) {
+      dev.log('PAYMENT ERROR: $e\n$st', name: 'PAY');
+      if (mounted) setState(() => _isProcessing = false);
       _showPaymentError(context, e.toString());
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+    }
+  }
+
+  void _navigateToReviewIfAny(BuildContext context) {
+    // reviews može još biti null jer se puni async
+    final list = reviews?.items ?? [];
+    final existing = list.cast<Review?>().firstWhere(
+      (r) => r?.reviewerUserId == AuthProvider.user?.id,
+      orElse: () => null,
+    );
+    const msg = 'Plaćanje uspješno izvršeno!';
+    if (existing != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              GuestReviewScreen(existingReview: existing, successMessage: msg),
+        ),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              GuestReviewScreen(existingReview: existing, successMessage: msg),
+        ),
+      );
     }
   }
 
   void _showPaymentSuccess(BuildContext context, CartProvider cart) {
     cart.clear();
-
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-          title: const Text('Plaćanje uspješno!'),
-          content: const Text('Vaša narudžba je uspješno plaćena.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              },
-              child: const Text('U redu'),
-            ),
-          ],
-        );
-      },
+      builder: (BuildContext context) => AlertDialog(
+        icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
+        title: const Text('Plaćanje uspješno!'),
+        content: const Text('Vaša narudžba je uspješno plaćena.'),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
+            child: const Text('U redu'),
+          ),
+        ],
+      ),
     );
   }
 
   void _showOrderConfirmation(BuildContext context, CartProvider cart) {
     cart.clear();
-
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-          title: const Text('Narudžba potvrđena!'),
-          content: const Text('Vaša narudžba je uspješno plaćena.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              },
-              child: const Text('U redu'),
-            ),
-          ],
-        );
-      },
+      builder: (BuildContext context) => AlertDialog(
+        icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
+        title: const Text('Narudžba potvrđena!'),
+        content: const Text('Vaša narudžba je uspješno plaćena.'),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
+            child: const Text('U redu'),
+          ),
+        ],
+      ),
     );
   }
 
   void _showPaymentError(BuildContext context, String error) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          icon: const Icon(Icons.error, color: Colors.red, size: 48),
-          title: const Text('Greška pri plaćanju'),
-          content: Text(error),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Pokušaj ponovo'),
-            ),
-          ],
-        );
-      },
+      builder: (BuildContext context) => AlertDialog(
+        icon: const Icon(Icons.error, color: Colors.red, size: 48),
+        title: const Text('Greška pri plaćanju'),
+        content: Text(error),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Pokušaj ponovo'),
+          ),
+        ],
+      ),
     );
   }
 }

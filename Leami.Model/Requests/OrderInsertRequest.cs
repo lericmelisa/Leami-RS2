@@ -25,7 +25,7 @@ namespace Leami.Model.Requests
 
         [Required(ErrorMessage = "Stavke narudžbe su obavezne.")]
         [MinLength(1, ErrorMessage = "Potrebna je najmanje jedna stavka.")]
-        public List<OrderItemInsertRequest> Items { get; set; } = new();
+        public List<OrderItemInsertRequest> OrderItems { get; set; } = new();
 
 
     }

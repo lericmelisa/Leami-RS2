@@ -25,6 +25,7 @@ class _AdminDetailsScreenState extends State<AdminDetailsScreen> {
   Map<String, dynamic> _initialValue = {};
   ImageProvider? _imagePreview;
   String? _base64Image;
+  final _emailFocus = FocusNode();
 
   bool _passwordVisible = false;
   late UserProvider userProvider;
@@ -33,6 +34,12 @@ class _AdminDetailsScreenState extends State<AdminDetailsScreen> {
   SearchResult<UserRole>? roles;
   int? _selectedRoleId;
   bool _removeImage = false;
+
+  @override
+  void dispose() {
+    _emailFocus.dispose(); // <— obavezno
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -161,7 +168,41 @@ class _AdminDetailsScreenState extends State<AdminDetailsScreen> {
             setState(() {});
           }
         } catch (e) {
-          if (!mounted) return;
+          final s = e.toString();
+
+          // samo za 409 (duplikat email/username)
+          if (RegExp(r'HTTP\s*409').hasMatch(s) ||
+              s.contains('"status":409') ||
+              s.toLowerCase().contains('conflict')) {
+            const msg = 'Već postoji korisnik s tom email adresom.';
+
+            final emailField = formKey.currentState?.fields['email'];
+            emailField?.invalidate(msg); // prikaži grešku ispod polja
+
+            // pop-up
+            await showDialog<void>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Ne može se spremiti'),
+                content: const Text(msg),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('U redu'),
+                  ),
+                ],
+              ),
+            );
+
+            // očisti vrijednost i fokusiraj polje
+            emailField?.didChange('');
+            if (mounted) {
+              FocusScope.of(context).requestFocus(_emailFocus);
+            }
+            return; // prekini dalje rukovanje
+          }
+
+          // ostale greške prikaži generički
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -218,7 +259,20 @@ class _AdminDetailsScreenState extends State<AdminDetailsScreen> {
               width: fieldWidth,
               child: FormBuilderTextField(
                 name: 'email',
+                focusNode: _emailFocus,
                 decoration: const InputDecoration(labelText: 'Email'),
+                onChanged: (_) {
+                  formKey.currentState?.fields['email']?.validate();
+                },
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.required(
+                    errorText: 'Email je obavezan.',
+                  ),
+                  FormBuilderValidators.email(
+                    errorText:
+                        'Unesite ispravan email (npr. korisnik@example.com).',
+                  ),
+                ]),
               ),
             ),
             SizedBox(

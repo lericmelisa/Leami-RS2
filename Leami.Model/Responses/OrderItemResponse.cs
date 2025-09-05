@@ -13,5 +13,8 @@ namespace Leami.Model.Responses
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal Total { get; set; }
+        public ArticleResponse? Article {get;set;}
+        public ArticleResponse? ArticleName { get; set; }
+
     }
 }

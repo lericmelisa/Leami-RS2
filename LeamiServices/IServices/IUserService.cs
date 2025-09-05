@@ -17,6 +17,7 @@ namespace Leami.Services.IServices
     {
         Task<UserResponse?> LoginAsync(UserLoginRequest request);
         Task LogoutAsync();
+        Task<ChangePasswordResponse> ChangePasswordAsync(ChangePasswordRequest req);
         //Task<IdentityResult> RegisterAsync(RegisterDto dto);
         //Task<SignInResult> LoginAsync(LoginDto dto);
         //Task LogoutAsync();

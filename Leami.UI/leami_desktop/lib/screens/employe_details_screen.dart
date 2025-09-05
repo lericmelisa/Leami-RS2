@@ -1,35 +1,40 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
-import 'package:leami_mobile/models/search_result.dart';
-import 'package:leami_mobile/models/user.dart';
-import 'package:leami_mobile/models/user_role.dart';
-import 'package:leami_mobile/providers/user_provider.dart';
-import 'package:leami_mobile/providers/user_role_provider.dart';
+import 'package:leami_desktop/models/search_result.dart';
+import 'package:leami_desktop/models/user.dart';
+import 'package:leami_desktop/models/user_role.dart';
+import 'package:leami_desktop/providers/auth_provider.dart';
+import 'package:leami_desktop/providers/user_provider.dart';
+import 'package:leami_desktop/providers/user_role_provider.dart';
+import 'package:leami_desktop/screens/employee_change_password_screen.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-class UserDetailsScreen extends StatefulWidget {
+class EmployeDetailsScreen extends StatefulWidget {
   User? user;
-  UserDetailsScreen({super.key, this.user});
+  EmployeDetailsScreen({super.key, this.user});
 
   @override
-  State<UserDetailsScreen> createState() => _UserDetailsScreenState();
+  State<EmployeDetailsScreen> createState() => _EmployeeDetailsScreenState();
 }
 
-class _UserDetailsScreenState extends State<UserDetailsScreen> {
+class _EmployeeDetailsScreenState extends State<EmployeDetailsScreen> {
   final formKey = GlobalKey<FormBuilderState>();
   Map<String, dynamic> _initialValue = {};
   ImageProvider? _imagePreview;
   String? _base64Image;
-  bool providerInitialized = false;
 
+  bool _passwordVisible = false;
   late UserProvider userProvider;
   late UserRoleProvider userRoleProvider;
 
   SearchResult<UserRole>? roles;
   int? _selectedRoleId;
-  String? _selectedRoleName;
+  bool _removeImage = false;
 
   @override
   void initState() {
@@ -44,14 +49,11 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
         'email': widget.user!.email,
         'phoneNumber': widget.user!.phoneNumber,
         'roles': widget.user!.role?.id,
-        'jobTitle': widget.user!.jobTitle,
-        'hireDate': widget.user!.hireDate,
-        'note': widget.user!.note,
         'userImage': widget.user!.userImage,
+        'password': '',
       };
 
       _selectedRoleId = widget.user!.role?.id;
-      _selectedRoleName = widget.user!.role?.name;
 
       final img = widget.user!.userImage;
       if (img != null && img.isNotEmpty) {
@@ -60,9 +62,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
           final decoded = base64Decode(pureBase64);
           _imagePreview = MemoryImage(decoded);
           _base64Image = pureBase64;
-        } catch (e) {
-          debugPrint('Greška pri dekodiranju slike: $e');
-        }
+        } catch (_) {}
       }
     } else {
       _initialValue = {
@@ -71,35 +71,26 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
         'email': '',
         'phoneNumber': '',
         'roles': null,
-        'jobTitle': '',
-        'hireDate': null,
-        'note': '',
         'userImage': null,
+        'password': '',
       };
     }
+
+    _initFormData();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    userProvider = context.read<UserProvider>();
-    userRoleProvider = context.read<UserRoleProvider>();
-    providerInitialized = true;
-    initFormData();
-  }
-
-  initFormData() async {
+  Future<void> _initFormData() async {
     roles = await userRoleProvider.get();
     if (widget.user != null && widget.user!.role != null) {
       formKey.currentState?.fields['roles']?.didChange(widget.user!.role!.id);
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Podaci o korisniku')),
+      appBar: AppBar(title: const Text('Korisnički profil')),
       body: SingleChildScrollView(
         primary: true,
         padding: const EdgeInsets.all(16),
@@ -125,67 +116,55 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
 
         final raw = Map<String, dynamic>.from(formKey.currentState!.value);
 
-        if (raw['hireDate'] != null && raw['hireDate'] is DateTime) {
-          raw['hireDate'] = (raw['hireDate'] as DateTime).toIso8601String();
-        }
-
-        if (_selectedRoleId != null) {
-          raw['roleIds'] = [_selectedRoleId];
-        }
         raw.remove('role');
         raw.remove('roles');
+        raw.remove('roleIds');
 
-        if (_base64Image != null && _base64Image!.isNotEmpty) {
+        raw.remove('password');
+
+        if (_removeImage) {
+          raw['userImage'] = null;
+        } else if (_base64Image != null && _base64Image!.isNotEmpty) {
           raw['userImage'] = _base64Image;
         } else {
-          raw['userImage'] = null;
+          raw.remove('userImage');
         }
 
         try {
           if (widget.user == null) {
             widget.user = await userProvider.insert(raw);
-            // Prikaži poruku o uspjehu
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Korisnik je uspješno kreiran!'),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
-              ),
-            );
-
-            // Vrati se nakon što se frame završi
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                Navigator.of(context).pop(true);
-              }
-            });
           } else {
             widget.user = await userProvider.update(widget.user!.id!, raw);
+          }
 
-            // Prikaži poruku o uspjehu
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Korisnik je uspješno ažuriran!'),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
-              ),
-            );
+          if (AuthProvider.user != null &&
+              widget.user != null &&
+              AuthProvider.user!.id == widget.user!.id) {
+            AuthProvider.user = widget.user;
+          }
 
-            // Vrati se nakon što se frame završi
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                Navigator.of(context).pop(true);
-              }
-            });
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Sačuvano.'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop(true);
+          } else {
+            setState(() {});
           }
         } catch (e) {
+          if (!mounted) return;
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Error: $e')));
         }
-        setState(() {});
       },
-      child: const Text('Save'),
+      child: const Text('Spremi'),
     );
   }
 
@@ -195,7 +174,6 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       initialValue: _initialValue,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // 2 kolone ako ima dovoljno širine, inače 1
           const double gutter = 16;
           final bool isWide = constraints.maxWidth >= 900;
           final double fieldWidth = isWide
@@ -207,7 +185,6 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
               width: fieldWidth,
               child: FormBuilderTextField(
                 name: 'firstName',
-                enabled: widget.user == null,
                 decoration: const InputDecoration(labelText: 'First Name'),
                 validator: FormBuilderValidators.compose([
                   FormBuilderValidators.required(errorText: 'Ime je obavezno.'),
@@ -222,7 +199,6 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
               width: fieldWidth,
               child: FormBuilderTextField(
                 name: 'lastName',
-                enabled: widget.user == null,
                 decoration: const InputDecoration(labelText: 'Last Name'),
                 validator: FormBuilderValidators.compose([
                   FormBuilderValidators.required(
@@ -239,7 +215,6 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
               width: fieldWidth,
               child: FormBuilderTextField(
                 name: 'email',
-                enabled: widget.user == null,
                 decoration: const InputDecoration(labelText: 'Email'),
               ),
             ),
@@ -247,16 +222,71 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
               width: fieldWidth,
               child: FormBuilderTextField(
                 name: 'phoneNumber',
-                enabled: widget.user == null,
                 decoration: const InputDecoration(labelText: 'Phone Number'),
+                keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  // Dozvoli samo cifre, +, -, razmak i /
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-\s/]')),
+                ],
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.required(
+                    errorText: 'Telefon je obavezan.',
+                  ),
+                  // Dodatna provjera formata i dužine
+                  (val) {
+                    final v = (val ?? '').trim();
+                    // + opcionalno, cifre/razmaci/-/; 6–20 znakova ukupno
+                    final re = RegExp(r'^\+?[0-9\s\-/]{6,20}$');
+                    if (!re.hasMatch(v))
+                      return 'Unesite ispravan broj telefona.';
+                    return null;
+                  },
+                ]),
+              ),
+            ),
+            SizedBox(
+              width: fieldWidth,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.lock_reset),
+                label: const Text('Promijeni lozinku'),
+                onPressed: () async {
+                  if (widget.user?.id == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Nije moguće promijeniti lozinku bez korisničkog ID-a.',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+
+                  final changed = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) => EmployeeChangePasswordScreen(
+                        userId: widget.user!.id!,
+                      ),
+                    ),
+                  );
+
+                  if (changed == true && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Lozinka uspješno promijenjena.'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                },
               ),
             ),
             SizedBox(
               width: fieldWidth,
               child: FormBuilderDropdown<int>(
                 name: "roles",
-                decoration: const InputDecoration(labelText: "User Role"),
+                enabled: false,
                 initialValue: _selectedRoleId,
+                decoration: const InputDecoration(labelText: "Uloga"),
                 items:
                     roles?.items
                         ?.map(
@@ -267,56 +297,12 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                         )
                         .toList() ??
                     [],
-                onChanged: (val) {
-                  final role = roles?.items?.firstWhere(
-                    (r) => r.id == val,
-                    orElse: () => UserRole(),
-                  );
-                  setState(() {
-                    _selectedRoleId = val;
-                    _selectedRoleName = role?.name;
-                  });
-                },
               ),
             ),
-            // Employee polja (samo kad je Employee)
-            if (_selectedRoleName == "Employee") ...[
-              SizedBox(
-                width: fieldWidth,
-                child: FormBuilderTextField(
-                  name: 'jobTitle',
-                  decoration: const InputDecoration(labelText: 'Job Title'),
-                  validator: FormBuilderValidators.required(
-                    errorText: 'Job Title je obavezan.',
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: fieldWidth,
-                child: FormBuilderDateTimePicker(
-                  name: 'hireDate',
-                  decoration: const InputDecoration(labelText: 'Hire Date'),
-                  inputType: InputType.date,
-                  validator: FormBuilderValidators.required(
-                    errorText: 'Datum zaposlenja je obavezan.',
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: fieldWidth,
-                child: FormBuilderTextField(
-                  name: 'note',
-                  decoration: const InputDecoration(labelText: 'Napomena'),
-                  maxLines: 2,
-                ),
-              ),
-            ],
-            // Slika
             SizedBox(
               width: fieldWidth,
               child: FormBuilderField<String>(
                 name: 'userImage',
-                enabled: widget.user == null,
                 builder: (field) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,11 +318,51 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                               ),
                             )
                           : const Text('Nema slike'),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          TextButton.icon(
+                            icon: const Icon(Icons.upload),
+                            label: const Text('Odaberi sliku'),
+                            onPressed: () async {
+                              final res = await FilePicker.platform.pickFiles(
+                                type: FileType.image,
+                              );
+                              if (res != null &&
+                                  res.files.single.path != null) {
+                                final bytes = await File(
+                                  res.files.single.path!,
+                                ).readAsBytes();
+                                setState(() {
+                                  _removeImage = false;
+                                  _base64Image = base64Encode(bytes);
+                                  _imagePreview = MemoryImage(bytes);
+                                });
+                                field.didChange(_base64Image);
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          if (_imagePreview != null)
+                            TextButton.icon(
+                              icon: const Icon(Icons.delete_outline),
+                              label: const Text('Ukloni sliku'),
+                              onPressed: () {
+                                setState(() {
+                                  _removeImage = true;
+                                  _base64Image = null;
+                                  _imagePreview = null;
+                                });
+                                field.didChange(null);
+                              },
+                            ),
+                        ],
+                      ),
                       if (field.hasError)
                         Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
-                            field.errorText!,
+                            field.errorText ?? '',
                             style: const TextStyle(color: Colors.red),
                           ),
                         ),
@@ -347,11 +373,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
             ),
           ];
 
-          return Wrap(
-            spacing: gutter, // razmak između kolona
-            runSpacing: 12, // vertikalni razmak između redova
-            children: items,
-          );
+          return Wrap(spacing: gutter, runSpacing: 12, children: items);
         },
       ),
     );

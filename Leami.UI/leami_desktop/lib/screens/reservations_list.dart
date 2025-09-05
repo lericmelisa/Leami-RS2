@@ -148,7 +148,9 @@ class _ReservationListState extends State<ReservationList> {
           final timeTxt = r.reservationTime ?? '-';
           final peopleTxt = (r.numberOfGuests?.toString() ?? '-');
           // Ako nemaš korisnika u modelu rezervacije, fallback na trenutnog (kao što si imala):
-          final userTxt = (AuthProvider.user?.firstName ?? 'Nepoznat');
+          final userTxt = r.user != null
+              ? '${r.user!.firstName} ${r.user!.lastName}'
+              : 'Nepoznat';
 
           // status: 1=Potvrđeno, 0=Odbijeno, ostalo=Na čekanju
           final isConfirmed = r.reservationStatus == 1;

@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace LeamiWebAPI.Controllers
 {
@@ -19,35 +21,70 @@ namespace LeamiWebAPI.Controllers
         {           
             _userService = userService;
         }
-        [HttpPost("Registration")]
-        public async Task<UserResponse> Register([FromBody] UserRegistrationRequest request)
+
+        [HttpPut("{id}")]
+        public override async Task<UserResponse> Update(int id, [FromBody] UserUpdateRequest request)
         {
-            return await _userService.CreateAsync(request);
+            try
+            {
+                return await _userService.UpdateAsync(id, request);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is SqlException sql && (sql.Number == 2601 || sql.Number == 2627))
+            {
+                Response.StatusCode = StatusCodes.Status409Conflict;
+                await Response.WriteAsJsonAsync(new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Title = "Conflict",
+                    Detail = "Email/korisničko ime je već u upotrebi."
+                });
+                return default!;
+            }
         }
-        //[HttpPost("register/guest")]
-        //[AllowAnonymous]
-        //public async Task<IActionResult> RegisterGuest([FromBody] UserRegistrationRequest dto)
-        //{
-        //    var result = await _userService.CreateWithRoleAsync(dto, "Guest");
-        //    return result.Succeeded ? Ok(result.User) : BadRequest(result.Errors);
-        //}
+        [AllowAnonymous]
+        [HttpPost("Registration")]
+        public override async Task<UserResponse> Create([FromBody] UserRegistrationRequest request)
+        {
+            try
+            {
+                return await _userService.CreateAsync(request);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is SqlException sql && (sql.Number == 2601 || sql.Number == 2627))
+            {
+                Response.StatusCode = StatusCodes.Status409Conflict;
+                await Response.WriteAsJsonAsync(new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Title = "Conflict",
+                    Detail = "Email/korisničko ime je već u upotrebi."
+                });
+                return default!;
+            }
+            catch (InvalidOperationException ex) // <-- DODANO
+            {
+                Response.StatusCode = StatusCodes.Status409Conflict;
+                await Response.WriteAsJsonAsync(new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Title = "Conflict",
+                    Detail = ex.Message
+                });
+                return default!;
+            }
+        }
 
-        //[HttpPost("register/employee")]
-        //[Authorize(Roles = "Admin")]
-        //public async Task<IActionResult> RegisterEmployee([FromBody] UserRegistrationRequest dto)
-        //{
-        //    var result = await _userService.CreateWithRoleAsync(dto, "Employee");
-        //    return result.Succeeded ? Ok(result.User) : BadRequest(result.Errors);
-        //}
+        [Authorize]
+        [HttpPost("change-password")]
+        [ProducesResponseType(typeof(ChangePasswordResponse), StatusCodes.Status200OK)]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest req)
+        {
+            var dto = await _userService.ChangePasswordAsync(req);
+            return Ok(dto);
+        }
 
-        //[HttpPost("register/admin")]
-        //[Authorize(Roles = "Admin")]
-        //public async Task<IActionResult> RegisterAdmin([FromBody] UserRegistrationRequest dto)
-        //{
-        //    var result = await _userService.CreateWithRoleAsync(dto, "Admin");
-        //    return result.Succeeded ? Ok(result.User) : BadRequest(result.Errors);
-        //}
-       
+     
+
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<ActionResult<UserResponse>> Login([FromBody] UserLoginRequest req)
         {

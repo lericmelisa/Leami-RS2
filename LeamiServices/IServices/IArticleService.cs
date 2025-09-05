@@ -12,6 +12,6 @@ namespace Leami.Services.IServices
 {
     public interface IArticleService : ICRUDService<ArticleResponse, ArticleSearchObject, ArticleInsertRequest, ArticleInsertRequest>
     {
-
+        Task<List<ArticleResponse>> RecommendAsync(int articleId, int take = 3);
     }
 }

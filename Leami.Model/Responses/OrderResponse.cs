@@ -15,6 +15,6 @@ namespace Leami.Model.Responses
         public decimal TotalAmount { get; set; }
         public string? PaymentMethod { get; set; }
         public string? Notes { get; set; }
-        public List<OrderItemResponse> Items { get; set; } = new();
+        public List<OrderItemResponse> OrderItems { get; set; } = new();
     }
 }

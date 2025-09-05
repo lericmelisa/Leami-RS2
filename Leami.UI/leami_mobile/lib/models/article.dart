@@ -1,11 +1,12 @@
 import 'package:json_annotation/json_annotation.dart';
+
 part 'article.g.dart';
 
 @JsonSerializable()
 class Article {
-  int? articleId;
-  String? articleName;
-  double? articlePrice;
+  int articleId;
+  String articleName;
+  double articlePrice;
   String? articleDescription;
   String? articleImage;
   int? categoryId;
@@ -22,6 +23,5 @@ class Article {
   //ovoje za pojedinacni objekat sad treba odradit za listu
   factory Article.fromJson(Map<String, dynamic> json) =>
       _$ArticleFromJson(json);
-
   Map<String, dynamic> toJson() => _$ArticleToJson(this);
 }

@@ -3,8 +3,8 @@ part 'article_category.g.dart';
 
 @JsonSerializable()
 class ArticleCategory {
-  int? categoryId;
-  String? categoryName;
+  int categoryId;
+  String categoryName;
 
   ArticleCategory({this.categoryId = 0, this.categoryName = ''});
 

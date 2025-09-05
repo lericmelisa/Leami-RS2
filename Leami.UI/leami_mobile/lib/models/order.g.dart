@@ -11,7 +11,7 @@ OrderRequest _$OrderRequestFromJson(Map<String, dynamic> json) => OrderRequest(
   orderDate: DateTime.parse(json['orderDate'] as String),
   totalAmount: (json['totalAmount'] as num).toDouble(),
   paymentMethod: json['paymentMethod'] as String,
-  items: (json['items'] as List<dynamic>)
+  orderItems: (json['orderItems'] as List<dynamic>)
       .map((e) => OrderItemRequest.fromJson(e as Map<String, dynamic>))
       .toList(),
 );
@@ -22,5 +22,5 @@ Map<String, dynamic> _$OrderRequestToJson(OrderRequest instance) =>
       'orderDate': instance.orderDate.toIso8601String(),
       'totalAmount': instance.totalAmount,
       'paymentMethod': instance.paymentMethod,
-      'items': instance.items,
+      'orderItems': instance.orderItems,
     };

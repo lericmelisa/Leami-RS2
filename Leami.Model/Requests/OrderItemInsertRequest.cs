@@ -18,7 +18,7 @@ namespace Leami.Model.Requests
         public int Quantity { get; set; }
 
         [Required(ErrorMessage = "Cijena po komadu je obavezna.")]
-        [Range(typeof(float), "1", "1000", ErrorMessage = "Cijena moze biti od 1 do 1000.")]
+        [Range(0, 1000, ErrorMessage = "Cijena po komadu je u rasponu od 1 do 1000KM")]
         public decimal UnitPrice { get; set; }
 
        

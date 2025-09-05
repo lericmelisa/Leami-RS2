@@ -14,7 +14,7 @@ namespace Leami.Model.Entities
         public EmployeeDetails? EmployeeDetails { get; set; }
         public AdministratorDetails? AdminDetails { get; set; }
         public GuestDetails? GuestDetails { get; set; }
-        public ICollection<Notification>? Notifications { get; set; } = new List<Notification>();
+       
 
         public RestaurantInfo? ManagedRestaurant { get; set; }
         public ICollection<Review>? Reviews { get; set; } = new List<Review>();

@@ -21,7 +21,7 @@ class CartScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Otkači'),
+              child: const Text('Otkaži'),
             ),
             TextButton(
               onPressed: () {
@@ -59,14 +59,33 @@ class CartScreen extends StatelessWidget {
                       context: context,
                       builder: (BuildContext context) {
                         return AlertDialog(
-                          title: const Text('Očisti korpu'),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          title: Stack(
+                            children: [
+                              const Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text('Očisti korpu'),
+                              ),
+                              Positioned(
+                                right: -8,
+                                top: -8,
+                                child: IconButton(
+                                  icon: const Icon(Icons.close),
+                                  tooltip: 'Zatvori',
+                                  onPressed: () => Navigator.of(context).pop(),
+                                ),
+                              ),
+                            ],
+                          ),
                           content: const Text(
                             'Da li želite ukloniti sve artikle iz korpe?',
                           ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('Otkači'),
+                              child: const Text('Otkaži'),
                             ),
                             TextButton(
                               onPressed: () {
@@ -161,22 +180,7 @@ class CartScreen extends StatelessWidget {
                           padding: const EdgeInsets.all(12),
                           child: Row(
                             children: [
-                              // Placeholder za sliku
-                              Container(
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceVariant.withOpacity(0.5),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(Icons.image, size: 30),
-                              ),
-
-                              const SizedBox(width: 12),
-
-                              // Informacije o proizvodu
+                              // Informacije o proizvodu (BEZ SLIKE)
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,10 +215,9 @@ class CartScreen extends StatelessWidget {
                                 ),
                               ),
 
-                              // Kontrole količine
+                              // Kontrole količine + delete
                               Column(
                                 children: [
-                                  // Stepper
                                   Container(
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(20),
@@ -288,10 +291,7 @@ class CartScreen extends StatelessWidget {
                                       ],
                                     ),
                                   ),
-
                                   const SizedBox(height: 8),
-
-                                  // Delete dugme
                                   Material(
                                     color: Colors.transparent,
                                     child: InkWell(
@@ -340,7 +340,6 @@ class CartScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Sumarni pregled
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -379,8 +378,6 @@ class CartScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 16),
-
-                        // Dugme za plaćanje
                         ElevatedButton(
                           onPressed: () {
                             Navigator.push(

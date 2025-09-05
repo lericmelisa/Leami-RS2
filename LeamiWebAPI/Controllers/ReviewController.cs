@@ -32,17 +32,19 @@ namespace LeamiWebAPI.Controllers
             // 1) Provjera: ima li korisnik narudžbu?
             //if (!await _orderService.UserHasAnyOrder(request.ReviewerUserId))
             //    throw new InvalidOperationException("Ne možete ostaviti recenziju dok nemate nijednu narudžbu.");
+            var already = await _context.Reviews
+                                            .AsNoTracking()
+                                               .AnyAsync(r => r.ReviewerUserId == request.ReviewerUserId && !r.IsDeleted);
 
-            // 2) Provjera: već postoji recenzija?
-            var existing = await GetAsync(new ReviewSearchObject { ReviewerUserId = request.ReviewerUserId });
-            if (existing.Any())
+            if (already)
                 throw new InvalidOperationException("Već ste ostavili recenziju. Ažurirajte postojeću.");
+
 
             // 3) Kreiraj entitet i postavi CreatedAt + ReviewerUser
             var entity = new Review();
             _mapper.Map(request, entity);
             entity.CreatedAt = DateTime.UtcNow;
-            entity.ReviewerUser = await _context.Users.FindAsync(request.ReviewerUserId);
+            entity.ReviewerUserId = request.ReviewerUserId;
 
             _context.Reviews.Add(entity);
             await _context.SaveChangesAsync();

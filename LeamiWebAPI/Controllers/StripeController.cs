@@ -25,17 +25,21 @@ namespace LeamiWebAPI.Controllers
                 {
                     Amount = request.Amount, // Amount in cents
                     Currency = "usd",
-                    PaymentMethodTypes = new List<string> { "card" },
+                    AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
+                    {
+                        Enabled = true
+                    }
                 };
 
                 var service = new PaymentIntentService();
                 var paymentIntent = await service.CreateAsync(options);
 
-                return Ok(new { ClientSecret = paymentIntent.ClientSecret });
+                return Ok(new { clientSecret = paymentIntent.ClientSecret });
             }
             catch (StripeException e)
             {
-                return BadRequest(e.Message);
+                // vrati jasan JSON, ne plain text
+                return BadRequest(new { error = e.Message });
             }
         }
 
@@ -48,12 +52,15 @@ namespace LeamiWebAPI.Controllers
         public ActionResult CreateCheckoutSession([FromBody] CreateCheckoutSessionRequest request)
         {
             var options = new SessionCreateOptions
-            {
+            { 
+                Mode = "payment",
                 PaymentMethodTypes = new List<string> { "card" },
                 LineItems = new List<SessionLineItemOptions>
-            {
+            { 
+                   
                 new SessionLineItemOptions
-                {
+                { 
+                   
                     PriceData = new SessionLineItemPriceDataOptions
                     {
                         UnitAmount = request.Amount,
@@ -66,7 +73,7 @@ namespace LeamiWebAPI.Controllers
                     Quantity = 1,
                 },
             },
-                Mode = "payment",
+               
                 SuccessUrl = "https://yourwebsite.com/success",
                 CancelUrl = "https://yourwebsite.com/cancel",
             };

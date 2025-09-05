@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:leami_desktop/models/search_result.dart';
-import 'package:leami_desktop/models/user.dart';
 import 'package:leami_desktop/providers/article_category_provider.dart';
 import 'package:leami_desktop/providers/article_provider.dart';
 import 'package:leami_desktop/providers/auth_provider.dart';
+import 'package:leami_desktop/providers/order_response_provider.dart';
 import 'package:leami_desktop/providers/report_provider.dart';
 import 'package:leami_desktop/providers/reservation_provider.dart';
 import 'package:leami_desktop/providers/restaurant_info_provider.dart';
 import 'package:leami_desktop/providers/review_provider.dart';
 import 'package:leami_desktop/providers/user_provider.dart';
 import 'package:leami_desktop/providers/user_role_provider.dart';
+import 'package:leami_desktop/screens/main_menu_employee.dart';
 import 'package:leami_desktop/screens/main_menu_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:leami_desktop/theme/theme.dart';
@@ -44,6 +44,9 @@ void main() {
         ChangeNotifierProvider<ReportProvider>(
           create: (context) => ReportProvider(),
         ),
+        ChangeNotifierProvider<OrderResponseProvider>(
+          create: (context) => OrderResponseProvider(),
+        ),
       ],
       child: const MyApp(),
     ),
@@ -76,9 +79,6 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  late SearchResult<User> _users;
-  late UserProvider _userProvider;
-
   bool _obscurePassword = true;
 
   @override
@@ -90,8 +90,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    _userProvider = context.read<UserProvider>();
-
     return Scaffold(
       appBar: AppBar(title: Text('Login Page')),
       body: Center(
@@ -145,7 +143,6 @@ class _LoginPageState extends State<LoginPage> {
                       final email = emailController.text.trim();
                       final pass = passwordController.text;
 
-                      // 1) login
                       final success = await AuthProvider.login(email, pass);
                       if (!success) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -156,45 +153,57 @@ class _LoginPageState extends State<LoginPage> {
                         return;
                       }
 
-                      try {
-                        // 2) dohvat korisnika po e-mailu
-                        _users = await _userProvider.get(
-                          filter: {"FTS": email},
-                        );
-                        User user = _users.items!.first;
-                        debugPrint("DOHVACENI USER JE: ${user.firstName}");
+                      final roleName = (AuthProvider.user?.role?.name ?? '')
+                          .toLowerCase();
 
-                        // 3) provjera role
-                        if ((user.role?.name ?? '') != 'Administrator') {
-                          await showDialog(
-                            context: context,
-                            builder: (_) => AlertDialog(
-                              title: const Text('Pristup odbijen'),
-                              content: const Text(
-                                'Samo administrator može pristupiti ovoj aplikaciji.',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('OK'),
-                                ),
-                              ],
-                            ),
-                          );
-                          return;
-                        }
+                      if (!mounted) return;
 
-                        // 4) sve OK → idi na glavni ekran
+                      if (roleName == 'administrator') {
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
                             builder: (_) => const MainMenuScreen(),
                           ),
                         );
-                      } catch (e) {
-                        // neuspjeh pri dohvat
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Greška pri dohvatu korisnika: $e'),
+                      } else if (roleName == 'employee' ||
+                          roleName == 'zaposlenik') {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (_) => const EmployeeMainMenuScreen(),
+                          ),
+                        );
+                      } else {
+                        // Ako nije ni admin ni employee — nema pristup desktop aplikaciji
+                        await showDialog<void>(
+                          context: context,
+                          barrierDismissible:
+                              true, // tap izvan dijaloga ga zatvara (opcionalno)
+                          builder: (ctx) => AlertDialog(
+                            titlePadding: const EdgeInsets.fromLTRB(
+                              24,
+                              20,
+                              8,
+                              0,
+                            ),
+                            title: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Pristup odbijen'),
+                                IconButton(
+                                  tooltip: 'Zatvori',
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () => Navigator.of(ctx).pop(),
+                                ),
+                              ],
+                            ),
+                            content: const Text(
+                              'Samo administrator i zaposlenik mogu pristupiti ovoj aplikaciji.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: const Text('OK'),
+                              ),
+                            ],
                           ),
                         );
                       }

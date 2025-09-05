@@ -4,7 +4,7 @@ part 'restaurant_info.g.dart';
 
 @JsonSerializable()
 class RestaurantInfo {
-  int? restaurantId;
+  int restaurantId;
   String name;
   String? description;
   String? address;
@@ -14,7 +14,7 @@ class RestaurantInfo {
   String closingTime; // "HH:mm:ss"
 
   RestaurantInfo({
-     this.restaurantId,
+    this.restaurantId = 0,
     this.name = '',
     this.description,
     this.address,

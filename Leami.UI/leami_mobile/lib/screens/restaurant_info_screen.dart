@@ -1,16 +1,12 @@
 import 'dart:convert';
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:leami_mobile/models/restaurant_info.dart';
 import 'package:leami_mobile/providers/restaurant_info_provider.dart';
-
 import 'package:provider/provider.dart';
 
-import 'restaurant_info_details.dart';
-
 class RestaurantInfoListScreen extends StatefulWidget {
-  const RestaurantInfoListScreen({Key? key}) : super(key: key);
+  const RestaurantInfoListScreen({super.key});
 
   @override
   State<RestaurantInfoListScreen> createState() =>
@@ -67,33 +63,6 @@ class _RestaurantInfoListScreenState extends State<RestaurantInfoListScreen> {
     }
     if (_error != null) {
       return Scaffold(body: Center(child: Text(_error!)));
-    }
-
-    // Ako _info == null, ponudi dugme za kreiranje
-    if (_info == null) {
-      return Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: const SizedBox.shrink(),
-        ),
-        body: Center(
-          child: ElevatedButton.icon(
-            icon: const Icon(Icons.add),
-            label: const Text('Kreiraj osnovne postavke'),
-            onPressed: () async {
-              final created = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const RestaurantInfoDetailsScreen(info: null),
-                ),
-              );
-              if (created == true) {
-                _loadInfo();
-              }
-            },
-          ),
-        ),
-      );
     }
 
     // Inače, imamo već postojeće postavke
@@ -153,18 +122,6 @@ class _RestaurantInfoListScreenState extends State<RestaurantInfoListScreen> {
             ],
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final updated = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (_) => RestaurantInfoDetailsScreen(info: _info),
-            ),
-          );
-          if (updated == true) _loadInfo();
-        },
-        child: const Icon(Icons.edit),
       ),
     );
   }

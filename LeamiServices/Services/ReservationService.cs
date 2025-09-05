@@ -34,23 +34,22 @@ namespace Leami.Services.Services
         IQueryable<Reservation> query,
           ReservationSearchObject? search = null)
         {
+            query = query.Include(r => r.User);
+
             if (search?.ReservationDate != null)
             {
                 query = query.Where(x => x.ReservationDate == search.ReservationDate);
             }
             if (search?.IsExpired != null)
             {
-                // Dobavi današnji datum kao DateOnly
                 var today = DateOnly.FromDateTime(DateTime.Now);
 
                 if (search.IsExpired == true)
                 {
-                    // Istekle: datum manje od danas
                     query = query.Where(x => x.ReservationDate < today);
                 }
                 else
                 {
-                    // Aktivne: datum veći ili jednak danas
                     query = query.Where(x => x.ReservationDate >= today);
                 }
             }
@@ -82,7 +81,7 @@ namespace Leami.Services.Services
             .ConfigureAwait(false);
 
             if (reservation == null)
-                return null; // ili baci custom exception
+                return null; 
 
             reservation.ReservationStatus = update.ReservationStatus;
 
@@ -95,7 +94,7 @@ namespace Leami.Services.Services
             {
                 
                 var userEmail = user.Email;
-                // statusText ovisno o update.ReservationStatus
+              
                 string statusText = update.ReservationStatus switch
                 {
                     0 => "Declined",
@@ -117,7 +116,7 @@ namespace Leami.Services.Services
                 _context.Notifications.Add(notificationEntity);
                 await _context.SaveChangesAsync();
 
-                // objedinimo email i status s separatorom, npr. pipe |
+               
                 var payload = $"{user.Email}|{statusText}";
                 var body = Encoding.UTF8.GetBytes(payload);
 
@@ -130,20 +129,7 @@ namespace Leami.Services.Services
 
           return _mapper.Map<ReservationResponse>(update);
         }
-        //private async Task SendRabbitMQMessageAsync(string message)
-        //{
-           
-           
-        //        using var channel = await _rabbitMQConnectionManager.GetChannelAsync();
-        //        byte[] body = Encoding.UTF8.GetBytes(message);
-
-        //        await channel.BasicPublishAsync(
-        //            exchange: "",
-        //            routingKey: _queueName,
-        //            body: body);
-            
-          
-        //}
+      
 
     }
 }

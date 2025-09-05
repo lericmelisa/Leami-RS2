@@ -7,23 +7,23 @@ part of 'user.dart';
 // **************************************************************************
 
 User _$UserFromJson(Map<String, dynamic> json) => User(
-  id: (json['id'] as num?)?.toInt(),
-  firstName: json['firstName'] as String?,
-  lastName: json['lastName'] as String?,
-  email: json['email'] as String?,
-  username: json['username'] as String?,
+  id: (json['id'] as num?)?.toInt() ?? 0,
+  firstName: json['firstName'] as String? ?? "",
+  lastName: json['lastName'] as String? ?? "",
+  email: json['email'] as String? ?? "",
+  username: json['username'] as String? ?? "",
   role: json['role'] == null
       ? null
       : UserRole.fromJson(json['role'] as Map<String, dynamic>),
   createdAt: User._fromJsonDate(json['createdAt']),
   lastLoginAt: User._fromJsonDate(json['lastLoginAt']),
-  phoneNumber: json['phoneNumber'] as String?,
-  token: json['token'] as String?,
+  phoneNumber: json['phoneNumber'] as String? ?? "",
+  token: json['token'] as String? ?? "",
   expiration: User._fromJsonDate(json['expiration']),
   userImage: json['userImage'] as String?,
-  jobTitle: json['jobTitle'] as String?,
+  jobTitle: json['jobTitle'] as String? ?? "",
   hireDate: User._fromJsonDate(json['hireDate']),
-  note: json['note'] as String?,
+  note: json['note'] as String? ?? "",
 );
 
 Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{

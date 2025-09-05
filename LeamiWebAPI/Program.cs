@@ -137,19 +137,16 @@ builder.Services.AddAuthentication(options =>
         {
             var userManager = ctx.HttpContext.RequestServices.GetRequiredService<UserManager<User>>();
 
-            var email = ctx.Principal?.FindFirstValue(ClaimTypes.NameIdentifier)
-                   ?? ctx.Principal?.FindFirstValue(ClaimTypes.Email);
-
+            var userId = ctx.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
             var tokenStamp = ctx.Principal?.FindFirst("sstamp")?.Value;
 
-            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(tokenStamp))
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(tokenStamp))
             {
-                ctx.Fail("Missing email or security stamp.");
+                ctx.Fail("Missing user id or security stamp.");
                 return;
             }
 
-            // ❗ Tražimo po e-mailu, NE po Id-u
-            var user = await userManager.FindByEmailAsync(email);
+            var user = await userManager.FindByIdAsync(userId);
             if (user == null)
             {
                 ctx.Fail("User not found.");
@@ -234,7 +231,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+
 
 app.UseAuthentication();
 app.UseAuthorization();

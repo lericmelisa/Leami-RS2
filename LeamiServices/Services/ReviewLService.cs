@@ -29,8 +29,13 @@ namespace Leami.Services.Services
 
         protected override IQueryable<Review> ApplyFilter(IQueryable<Review> query, ReviewSearchObject search)
         {
+            
+
             query = query.Include(r => r.ReviewerUser)
-                 .Where(r => !r.IsDeleted);
+                .Where(r => !r.IsDeleted);
+
+            if (search.ReviewerUserId.HasValue)
+                query = query.Where(r => r.ReviewerUserId == search.ReviewerUserId.Value);
 
             if (!string.IsNullOrWhiteSpace(search.FTS))
             {

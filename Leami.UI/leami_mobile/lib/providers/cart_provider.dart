@@ -17,27 +17,23 @@ class CartItem {
 }
 
 class CartProvider with ChangeNotifier {
-  Map<int, CartItem> _items = {};
+  final Map<int, CartItem> _items = {};
 
   Map<int, CartItem> get items => {..._items};
 
-  int get totalItems {
-    return _items.values.fold(0, (sum, item) => sum + item.quantity);
-  }
+  int get totalItems =>
+      _items.values.fold(0, (sum, item) => sum + item.quantity);
 
-  double get totalPrice {
-    return _items.values.fold(0.0, (sum, item) => sum + item.totalPrice);
-  }
+  double get totalPrice =>
+      _items.values.fold(0.0, (sum, item) => sum + item.totalPrice);
 
   // Deprecated: Use totalPrice instead
   double get total => totalPrice;
 
-  void addItem(dynamic productId, String title, double price) {
-    final id = productId;
-
-    if (_items.containsKey(id)) {
+  void addItem(int productId, String title, double price) {
+    if (_items.containsKey(productId)) {
       _items.update(
-        id,
+        productId,
         (existingItem) => CartItem(
           id: existingItem.id,
           name: existingItem.name,
@@ -46,7 +42,7 @@ class CartProvider with ChangeNotifier {
         ),
       );
     } else {
-      _items.putIfAbsent(id, () => CartItem(id: id, name: title, price: price));
+      _items[productId] = CartItem(id: productId, name: title, price: price);
     }
     notifyListeners();
   }
@@ -57,9 +53,7 @@ class CartProvider with ChangeNotifier {
   }
 
   void removeSingleItem(int productId) {
-    if (!_items.containsKey(productId)) {
-      return;
-    }
+    if (!_items.containsKey(productId)) return;
 
     if (_items[productId]!.quantity > 1) {
       _items.update(
@@ -78,9 +72,7 @@ class CartProvider with ChangeNotifier {
   }
 
   void updateQuantity(int productId, int newQuantity) {
-    if (!_items.containsKey(productId)) {
-      return;
-    }
+    if (!_items.containsKey(productId)) return;
 
     if (newQuantity <= 0) {
       _items.remove(productId);
@@ -103,17 +95,11 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  bool containsItem(String productId) {
-    return _items.containsKey(productId);
-  }
+  bool containsItem(int productId) => _items.containsKey(productId);
 
-  int getItemQuantity(String productId) {
-    return _items[productId]?.quantity ?? 0;
-  }
+  int getItemQuantity(int productId) => _items[productId]?.quantity ?? 0;
 
-  CartItem? getItem(String productId) {
-    return _items[productId];
-  }
+  CartItem? getItem(int productId) => _items[productId];
 
   List<CartItem> get itemsList => _items.values.toList();
 }

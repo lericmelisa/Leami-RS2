@@ -19,14 +19,19 @@ namespace Leami.Services.Services
 
         public async Task<string> CreatePaymentIntentAsync(float amount)
         {
+
             StripeConfiguration.ApiKey = _secretKey;
 
             var options = new PaymentIntentCreateOptions
             {
-                Amount = (long)(amount * 100), // Amount in cents
+                Amount = (long)(amount * 100),
                 Currency = "usd",
-                // You can also pass other options like 'description' and 'metadata' if needed
+                AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
+                {
+                    Enabled = true
+                },
             };
+
             var service = new PaymentIntentService();
             PaymentIntent paymentIntent = await service.CreateAsync(options);
 

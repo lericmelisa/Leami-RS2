@@ -7,16 +7,16 @@ part of 'reservation.dart';
 // **************************************************************************
 
 Reservation _$ReservationFromJson(Map<String, dynamic> json) => Reservation(
-  reservationId: (json['reservationId'] as num?)?.toInt(),
-  userId: (json['userId'] as num?)?.toInt(),
-  reservationDate: json['reservationDate'] as String?,
-  reservationTime: json['reservationTime'] as String?,
-  numberOfGuests: (json['numberOfGuests'] as num?)?.toInt(),
-  reservationStatus: (json['reservationStatus'] as num?)?.toInt(),
-  reservationReason: json['reservationReason'] as String?,
-  numberOfMinors: (json['numberOfMinors'] as num?)?.toInt(),
-  contactPhone: json['contactPhone'] as String?,
-  specialRequests: json['specialRequests'] as String?,
+  reservationId: (json['reservationId'] as num?)?.toInt() ?? 0,
+  userId: (json['userId'] as num?)?.toInt() ?? 0,
+  reservationDate: json['reservationDate'] as String? ?? "",
+  reservationTime: json['reservationTime'] as String? ?? "",
+  numberOfGuests: (json['numberOfGuests'] as num?)?.toInt() ?? 0,
+  reservationStatus: (json['reservationStatus'] as num?)?.toInt() ?? 0,
+  reservationReason: json['reservationReason'] as String? ?? "",
+  numberOfMinors: (json['numberOfMinors'] as num?)?.toInt() ?? 0,
+  contactPhone: json['contactPhone'] as String? ?? "",
+  specialRequests: json['specialRequests'] as String? ?? "",
   user: json['user'] == null
       ? null
       : User.fromJson(json['user'] as Map<String, dynamic>),

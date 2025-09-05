@@ -5,14 +5,14 @@ part 'user_role.g.dart';
 @JsonSerializable()
 class UserRole {
   @JsonKey(name: 'roleid')
-  int? id;
+  int id;
 
   @JsonKey(name: 'roleName')
-  String? name;
+  String name;
 
   String? description;
 
-  UserRole({this.id, this.name, this.description});
+  UserRole({this.id = 0, this.name = "", this.description = ""});
 
   factory UserRole.fromJson(Map<String, dynamic> json) =>
       _$UserRoleFromJson(json);

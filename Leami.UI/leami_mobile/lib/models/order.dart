@@ -9,14 +9,14 @@ class OrderRequest {
   final DateTime orderDate;
   final double totalAmount;
   final String paymentMethod;
-  final List<OrderItemRequest> items;
+  final List<OrderItemRequest> orderItems;
 
   OrderRequest({
     required this.userId,
     required this.orderDate,
     required this.totalAmount,
     required this.paymentMethod,
-    required this.items,
+    required this.orderItems,
   });
 
   factory OrderRequest.fromJson(Map<String, dynamic> json) =>

@@ -51,7 +51,7 @@ namespace Leami.Model.Requests
         [Phone(ErrorMessage = "Telefon nije u validnom formatu.")]
         public string ContactPhone { get; set; } = null!;
 
-        [MaxLength(2000, ErrorMessage = "Posebni zahtjevi mogu imati najviše 100 karaktera.")]
-        public string? SpeciaLRequests { get; set; }
+        [MaxLength(200, ErrorMessage = "Posebni zahtjevi mogu imati najviše 200 karaktera.")]
+        public string? SpeciaLRequest { get; set; }
     }
 }

@@ -8,13 +8,10 @@ import 'package:leami_desktop/providers/reservation_provider.dart';
 import 'package:leami_desktop/providers/restaurant_info_provider.dart';
 import 'package:leami_desktop/providers/review_provider.dart';
 import 'package:leami_desktop/providers/user_provider.dart';
-import 'package:leami_desktop/screens/admin_details_screen.dart';
 import 'package:leami_desktop/screens/admin_screen.dart';
-
 import 'package:leami_desktop/screens/report_screen.dart';
 import 'package:leami_desktop/screens/restaurant_info_screen.dart';
 import 'package:leami_desktop/screens/article_categories_switcher.dart';
-import 'package:leami_desktop/screens/user_details_screen.dart';
 import 'package:leami_desktop/screens/users_list.dart';
 import 'package:leami_desktop/screens/reservations_list.dart';
 import 'package:leami_desktop/screens/review_list.dart';

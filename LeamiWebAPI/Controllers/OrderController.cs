@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace LeamiWebAPI.Controllers
 {
 
-    public class OrderController : BaseCRUDController<OrderResponse, BaseSearchObject, OrderInsertRequest, OrderInsertRequest>
+    public class OrderController : BaseCRUDController<OrderResponse, OrderSearchObject, OrderInsertRequest, OrderInsertRequest>
     {
 
         private readonly IOrderLService _service;

@@ -5,12 +5,12 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Leami.Model.Requests;
-using Leami.Services.Database;         // tvoj DbContext
+using Leami.Services.Database;      
 using Leami.Services.Database.Entities;
 using Leami.Services.IServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using QuestPDF.Fluent;                  // za PDF
+using QuestPDF.Fluent;                
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
@@ -78,7 +78,7 @@ public class ReportService : IReportService
     {
         var cutoff = DateTime.UtcNow.AddMonths(-monthsBack);
 
-        // 1) SQL-preview: samo Year, Month i suma
+      
         var raw = await _db.Orders
             .Where(o => o.OrderDate >= cutoff)
             .GroupBy(o => new { o.OrderDate.Year, o.OrderDate.Month })
@@ -90,7 +90,7 @@ public class ReportService : IReportService
             })
             .ToListAsync();
 
-        // 2) Klijent: kreiraj DTO sa stvarnim DateTime-om
+       
         return raw
             .OrderBy(x => x.Year).ThenBy(x => x.Month)
             .Select(x => new MonthlyRevenueUpsertRequest
@@ -112,7 +112,7 @@ public class ReportService : IReportService
          })
          .ToListAsync();
 
-        // 2) Generiraj listu svih mjeseci u intervalu
+       
         var monthList = new List<DateTime>();
         var current = new DateTime(from.Year, from.Month, 1);
         var end = new DateTime(to.Year, to.Month, 1);
@@ -122,13 +122,13 @@ public class ReportService : IReportService
             current = current.AddMonths(1);
         }
 
-        // 3) Napravi lookup iz raw rezultata
+       
         var lookup = raw.ToDictionary(
             x => new DateTime(x.Year, x.Month, 1),
             x => x.Count
         );
 
-        // 4) Sastavi finalnu listu s default 0 gdje nema podataka
+       
         var result = monthList
             .Select(dt => new MonthlyCountUpsertRequest
             {

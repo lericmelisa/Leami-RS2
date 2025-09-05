@@ -8,7 +8,9 @@ using Leami.Services.Migrations;
 using Leami.Services.Services;
 using MapsterMapper;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -39,8 +41,37 @@ namespace Leami.Services.IServices
             _http = http;
         }
 
+        public async Task<ChangePasswordResponse> ChangePasswordAsync(ChangePasswordRequest req)
+        {
+            var user = await _userManager.FindByIdAsync(req.UserId.ToString())
+                       ?? throw new KeyNotFoundException("Korisnik nije pronađen.");
 
- 
+            var principal = _http.HttpContext?.User;
+            if (principal == null || !principal.Identity?.IsAuthenticated == true)
+                throw new UnauthorizedAccessException("Niste prijavljeni.");
+
+            if (string.IsNullOrWhiteSpace(req.OldPassword))
+                throw new ArgumentException("Stara lozinka je obavezna.");
+
+            var result = await _userManager.ChangePasswordAsync(user, req.OldPassword, req.NewPassword);
+            if (!result.Succeeded)
+                throw new InvalidOperationException(string.Join("; ", result.Errors.Select(e => e.Description)));
+
+           await _userManager.UpdateSecurityStampAsync(user);
+
+            user = await _userManager.FindByIdAsync(user.Id.ToString());
+
+            var (token, exp) = await GenerateJwtAsync(user);
+
+            return new ChangePasswordResponse
+            {
+                Token = token,
+                Expiration = exp
+            };
+        }
+
+
+
         public override async Task<UserResponse> GetByIdAsync(int id)
         {
             var entity = await _context.Users
@@ -72,7 +103,7 @@ namespace Leami.Services.IServices
         {
 
             if (string.IsNullOrWhiteSpace(search.FTS) && string.IsNullOrWhiteSpace(search.RoleName))
-                return query; // nema FTS → vrati sve
+                return query;
 
             if (!string.IsNullOrWhiteSpace(search.RoleName))
             {
@@ -115,7 +146,6 @@ namespace Leami.Services.IServices
             if (user is null)
                 throw new KeyNotFoundException("User not found.");
 
-            // Ako je cijeli req null (model-binding može poslati null), samo vrati trenutno stanje
             if (req == null)
             {
                 var dtoNull = mapper.Map<UserResponse>(user);
@@ -143,7 +173,7 @@ namespace Leami.Services.IServices
                 dtoNull.Note = user.EmployeeDetails?.Note;
                 return dtoNull;
             }
-            // 1) Patch baznih polja — mijenjaj samo ako je vrijednost POSLANA i NIJE prazna
+           
             if (!string.IsNullOrWhiteSpace(req.FirstName))
                 user.FirstName = req.FirstName.Trim();
 
@@ -162,7 +192,7 @@ namespace Leami.Services.IServices
                 }
             }
 
-            // Ako se pošalje slika, ali je prazna (0 bajtova) – ne diraj
+           
             user.UserImage = req.UserImage;
             // Promjena lozinke — samo ako je POSLANA i NIJE prazna
             if (!string.IsNullOrWhiteSpace(req.Password))
@@ -215,7 +245,7 @@ namespace Leami.Services.IServices
                         throw new InvalidOperationException("Remove roles failed: " + string.Join("; ", remRes.Errors.Select(e => e.Description)));
                 }
 
-                // osvježi set nakon promjena
+               
                 targetRoleNames = (await _userManager.GetRolesAsync(user))
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
             }
@@ -225,10 +255,9 @@ namespace Leami.Services.IServices
                 targetRoleNames = currentRoleNames;
             }
          
-            if (!string.IsNullOrWhiteSpace(req.PhoneNumber))
-            {               
-                await _userManager.SetPhoneNumberAsync(user, req.PhoneNumber.Trim());
-            }
+                        
+             await _userManager.SetPhoneNumberAsync(user, req.PhoneNumber.Trim()?? " ");
+         
 
 
             
@@ -267,17 +296,17 @@ namespace Leami.Services.IServices
             dto.HireDate = user.EmployeeDetails?.HireDate;
             dto.Note = user.EmployeeDetails?.Note;
 
+            (dto.Token, dto.Expiration) = await GenerateJwtAsync(user);
             return dto;
+
 
         }
         private async Task EnsureDetailsForRolesAsync(User user, HashSet<string> roleNames, UserUpdateRequest req)
         {
-            // Employee
             if (roleNames.Contains("Employee"))
             {
                 if (user.EmployeeDetails == null)
                 {
-                    // Kreiraj samo ako je došao bar neki podatak; ili koristi pametne default-e
                     if (req.JobTitle != null || req.HireDate != null || req.Note != null)
                     {
                         user.EmployeeDetails = new EmployeeDetails
@@ -346,84 +375,16 @@ namespace Leami.Services.IServices
 
             await Task.CompletedTask;
         }
-        //protected override void MapToEntityUpdate(User entity, UserUpdateRequest req)
-        //{
-        //    // ---- bazna polja ----
-        //    if (!string.IsNullOrWhiteSpace(req.FirstName))
-        //        entity.FirstName = req.FirstName!.Trim();
-
-        //    if (!string.IsNullOrWhiteSpace(req.LastName))
-        //        entity.LastName = req.LastName!.Trim();
-
-        //    if (!string.IsNullOrWhiteSpace(req.Email))
-        //    {
-        //        var email = req.Email!.Trim();
-        //        entity.Email = email;
-        //        entity.UserName = email;
-        //        entity.NormalizedEmail = email.ToUpperInvariant();
-        //        entity.NormalizedUserName = email.ToUpperInvariant();
-        //    }
-
-        //    if (req.UserImage != null && req.UserImage!.Length > 0)
-        //        entity.UserImage = req.UserImage;
-
-        //    // ---- employee polja samo ako je entitet stvarno Employee ----
-
-        //        // Ako želiš dopustiti “pražnjenje” polja, koristi (req.JobTitle != null) umjesto !IsNullOrWhiteSpace
-        //        if (!string.IsNullOrWhiteSpace(req.JobTitle))
-        //            entity.JobTitle = req.JobTitle!;
-
-        //        if (req.HireDate.HasValue)
-        //        entity.HireDate = req.HireDate.Value;
-
-        //        if (req.Note != null) // dopušta i prazni string da ‘počisti’ bilješku
-        //        entity.Note = req.Note!;
-
-        //    // RoleIds odrađuješ u BeforeUpdate (što već imaš).
-        //}
-
-
-        //protected override async Task BeforeUpdate(User entity, UserUpdateRequest request)
-        //{
-        //    // 1) Update password ako je promijenjen
-        //    if (!string.IsNullOrWhiteSpace(request.Password))
-        //    {
-        //        var passwordHasher = new PasswordHasher<User>();
-        //        entity.PasswordHash = passwordHasher.HashPassword(entity, request.Password);
-        //    }
-
-        //    // 2) Update rola
-        //    if (request.RoleIds != null && request.RoleIds.Any())
-        //    {
-        //        // Nađi sve trenutne role za usera
-        //        var currentRoles = _context.Set<UserRole>().Where(ur => ur.UserId == entity.Id);
-
-        //        // Obrisi ih
-        //        _context.Set<UserRole>().RemoveRange(currentRoles);
-
-        //        // Dodaj nove
-        //        foreach (var roleId in request.RoleIds)
-        //        {
-        //            var newUserRole = new UserRole
-        //            {
-        //                UserId = entity.Id,
-        //                RoleId = roleId
-        //            };
-        //            await _context.Set<UserRole>().AddAsync(newUserRole);
-        //        }
-        //    }
-
-
-        //}
+      
         private bool CallerIsAdmin =>
       _http.HttpContext?.User?.IsInRole("Administrator") == true;
         public override async Task<UserResponse> CreateAsync(UserRegistrationRequest request)
         {
-            if (await _userManager.FindByEmailAsync(request.Email) is not null) //implemenitrat USER EXCEPTION
+            if (await _userManager.FindByEmailAsync(request.Email) is not null) 
                 throw new InvalidOperationException("Korisnik s ovom email adresom već postoji.");
 
 
-            // 2) Kreiraj novi Identity korisnika
+       
             var user = new User
             {
                 FirstName = request.FirstName,
@@ -432,10 +393,10 @@ namespace Leami.Services.IServices
                 Created = DateTime.Now,
                 LastLoginAt = DateTime.Now,
                 UserName = request.Email,
-                UserImage = request.UserImage// <— ovdje automatski kopiraš e‑mail u Username
+                UserImage = request.UserImage
             };
 
-            // 3) Kreiranje uz hash lozinke
+         
             var createResult = await _userManager.CreateAsync(user, request.Password);
             if (!createResult.Succeeded)
                 throw new InvalidOperationException(
@@ -490,6 +451,9 @@ namespace Leami.Services.IServices
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user is null) return null;
 
+            var employee = await _context.Users
+      .Include(u => u.EmployeeDetails)
+      .FirstOrDefaultAsync(u => u.Id == user.Id);
 
             var valid = await _userManager.CheckPasswordAsync(user, request.Password);
             if (!valid) return null;
@@ -512,6 +476,12 @@ namespace Leami.Services.IServices
 
             var response = mapper.Map<UserResponse>(user);
             response.LastLoginAt = user.LastLoginAt;
+            if (employee.EmployeeDetails != null)
+            {
+                response.JobTitle = employee.EmployeeDetails.JobTitle ?? " ";
+                response.HireDate = employee.EmployeeDetails.HireDate;
+                response.Note = employee.EmployeeDetails.Note ?? " ";
+            }
 
 
             response.Role = roleDtos.FirstOrDefault();
@@ -522,51 +492,37 @@ namespace Leami.Services.IServices
         }
         private async Task<(string Token, DateTime Expires)> GenerateJwtAsync(User user)
         {
-            // 1) uloge
             var roleNames = await _userManager.GetRolesAsync(user);
             var securityStamp = user.SecurityStamp ?? string.Empty;
 
-            // 2) claimovi (Sub = subject = email; Jti = jedinstveni ID tokena)
-            var authClaims = new List<Claim>
-             {
-                 new Claim(JwtRegisteredClaimNames.Sub, user.Email ?? user.UserName ?? user.Id.ToString()),
-                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                 new Claim(ClaimTypes.NameIdentifier, user.Email ?? string.Empty),
-                 new Claim(ClaimTypes.Name, user.Email ?? user.UserName ?? string.Empty),
-                 new Claim("sstamp", securityStamp),
-                 new Claim("uid", user.Id.ToString())
-             };
-            authClaims.AddRange(roleNames.Select(r => new Claim(ClaimTypes.Role, r)));
+            var claims = new List<Claim>
+    {
+        new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),   
+        new Claim(ClaimTypes.Email, user.Email ?? string.Empty),   
+        new Claim("uid", user.Id.ToString()),
+        new Claim("sstamp", securityStamp)
+    };
+            claims.AddRange(roleNames.Select(r => new Claim(ClaimTypes.Role, r)));
 
-            // 3) parametri iz konfiguracije
             var issuer = _configuration["Jwt:Issuer"];
             var audience = _configuration["Jwt:Audience"];
-            var keyBytes = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
-            var expireMinutes = double.Parse(_configuration["Jwt:ExpireMinutes"]!);
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var expires = DateTime.UtcNow.AddMinutes(double.Parse(_configuration["Jwt:ExpireMinutes"]!));
 
-            var expires = DateTime.UtcNow.AddMinutes(expireMinutes);
-
-            // 4) potpis + token
-            var creds = new SigningCredentials(new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256);
-            var jwt = new JwtSecurityToken(
-                issuer: issuer,
-                audience: audience,
-                claims: authClaims,
-                notBefore: DateTime.UtcNow,
-                expires: expires,
-                signingCredentials: creds
-            );
-
+            var jwt = new JwtSecurityToken(issuer, audience, claims, DateTime.UtcNow, expires, creds);
             return (new JwtSecurityTokenHandler().WriteToken(jwt), jwt.ValidTo);
         }
         public async Task LogoutAsync()
         {
-            var email = _http.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? _http.HttpContext?.User?.FindFirstValue(ClaimTypes.Email);
+            var userIdStr = _http.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier)
+                          ?? _http.HttpContext?.User?.FindFirstValue("uid");
 
-            if (string.IsNullOrWhiteSpace(email)) return;
+            if (!int.TryParse(userIdStr, out var userId)) return;
 
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null) return;
 
             await _userManager.UpdateSecurityStampAsync(user); 
@@ -578,7 +534,7 @@ namespace Leami.Services.IServices
 
             var ids = baseResult.Select(x => x.Id).ToList();
 
-            // dovuci korisnike sa EmployeeDetails
+          
             var users = await _context.Users
                 .Where(u => ids.Contains(u.Id))
                 .Include(u => u.EmployeeDetails)
@@ -587,7 +543,6 @@ namespace Leami.Services.IServices
 
             var userMap = users.ToDictionary(u => u.Id, u => u);
 
-            // učitaj sve role jednom (3 komada kod tebe)
             var allRoles = await _roleManager.Roles.AsNoTracking().ToListAsync();
             var roleByName = allRoles.ToDictionary(r => r.Name!, r => r, StringComparer.OrdinalIgnoreCase);
 

@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:leami_mobile/models/review.dart';
+import 'package:leami_mobile/providers/auth_provider.dart';
 import 'package:leami_mobile/providers/review_provider.dart';
 import 'package:leami_mobile/screens/guest_articles_screen.dart';
 import 'package:provider/provider.dart';
 
 class GuestReviewScreen extends StatefulWidget {
   final Review? existingReview; // Dodajte ovaj parametar
-
-  const GuestReviewScreen({Key? key, this.existingReview}) : super(key: key);
+  final String? successMessage;
+  const GuestReviewScreen({Key? key, this.existingReview, this.successMessage})
+    : super(key: key);
 
   @override
   _GuestReviewScreenState createState() => _GuestReviewScreenState();
@@ -24,6 +26,15 @@ class _GuestReviewScreenState extends State<GuestReviewScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       reviewProvider = Provider.of<ReviewProvider>(context, listen: false);
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final msg = widget.successMessage;
+      if (msg != null && msg.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.green),
+        );
+      }
     });
 
     // Ako postoji postojeći review, učitajte podatke
@@ -237,7 +248,7 @@ class _GuestReviewScreenState extends State<GuestReviewScreen> {
         // Kreiranje novog review-a
         await reviewProvider?.insert(
           Review(
-            reviewerUserId: 3,
+            reviewerUserId: AuthProvider.user!.id,
             // AuthProvider.Id!,
             rating: _selectedRating,
             comment: _commentController.text.isEmpty

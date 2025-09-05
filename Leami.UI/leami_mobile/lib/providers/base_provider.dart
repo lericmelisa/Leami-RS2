@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as dev;
 import 'dart:io';
@@ -7,43 +8,25 @@ import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 import 'package:leami_mobile/models/search_result.dart';
 import 'package:leami_mobile/providers/auth_provider.dart';
+import 'dart:io' show SocketException;
 
 abstract class BaseProvider<T> with ChangeNotifier {
   static String? _baseUrl;
   String _endpoint = "";
 
-  static BaseProvider? _instance;
-
   BaseProvider(String endpoint) {
     _endpoint = endpoint; // PAZI NA CASE: "/api/User" vs "User"
     _baseUrl = const String.fromEnvironment(
       'baseUrl',
-      defaultValue: "http://localhost:5139",
+      defaultValue: "http://10.0.2.2:5139",
     );
-
-    _instance = this;
   }
 
-  static BaseProvider get instance {
-    if (_instance == null) {
-      throw Exception("BaseProvider.instance nije inicijaliziran!");
-    }
-    return _instance!;
-  }
-
-  /// Ovo je jedini getter koji se koristi pri građenju URL‐ova
-  String get baseUrl {
-    if (!kIsWeb && Platform.isAndroid) {
-      final uri = Uri.parse(_baseUrl!);
-      return uri.replace(host: '10.0.2.2').toString();
-    }
-    return _baseUrl!;
-  }
-
+  String get baseUrl => _baseUrl!;
   String get endpoint => _endpoint;
 
   Future<SearchResult<T>> get({dynamic filter}) async {
-    var url = '$baseUrl/$endpoint';
+    var url = '$_baseUrl/$endpoint';
 
     if (filter != null) {
       final query = getQueryString(filter);
@@ -67,24 +50,61 @@ abstract class BaseProvider<T> with ChangeNotifier {
   }
 
   Future<T> insert(dynamic request) async {
-    final url = '$baseUrl/$endpoint';
+    final url = '$_baseUrl/$endpoint';
     final uri = Uri.parse(url);
     final headers = getHeaders();
     final body = jsonEncode(request);
 
+    final sw = Stopwatch()..start();
     dev.log('POST $uri', name: 'HTTP');
-    dev.log('Headers: $headers', name: 'HTTP');
-    dev.log('Body: $body', name: 'HTTP');
+    dev.log('Request headers: ${(headers)}', name: 'HTTP');
+    dev.log('Request body: ${(body)}', name: 'HTTP');
 
-    final response = await http.post(uri, headers: headers, body: body);
+    try {
+      final response = await http
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 25));
 
-    ensureValidResponseOrThrow(response);
-    final data = _safeJsonDecode(response.body);
-    return fromJson(data);
+      sw.stop();
+      dev.log(
+        'Response (${response.statusCode}) in ${sw.elapsedMilliseconds} ms',
+        name: 'HTTP',
+      );
+      dev.log('Response headers: ${response.headers}', name: 'HTTP');
+      dev.log('Response body: ${(response.body)}', name: 'HTTP');
+
+      ensureValidResponseOrThrow(response);
+
+      final data = _safeJsonDecode(response.body);
+
+      // ⬇️ DODAJ OVO
+      if (data is Map<String, dynamic>) {
+        AuthProvider.applyAuthFromDto(data);
+      }
+
+      return fromJson(data);
+    } on TimeoutException {
+      sw.stop();
+      dev.log(
+        'POST $uri TIMEOUT after ${sw.elapsedMilliseconds} ms',
+        name: 'HTTP',
+      );
+      throw Exception(
+        'Zahtjev je istekao (timeout). Provjeri mrežu i baseUrl.',
+      );
+    } on SocketException catch (e) {
+      sw.stop();
+      dev.log('POST $uri SocketException: $e', name: 'HTTP');
+      throw Exception('Mrežna greška: $e');
+    } catch (e) {
+      sw.stop();
+      dev.log('POST $uri Exception: $e', name: 'HTTP');
+      rethrow;
+    }
   }
 
   Future<T> update(int id, [dynamic request]) async {
-    final url = '$baseUrl/$endpoint/$id';
+    final url = '$_baseUrl/$endpoint/$id';
     final uri = Uri.parse(url);
     final headers = getHeaders();
     final body = jsonEncode(request);
@@ -97,11 +117,17 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
     ensureValidResponseOrThrow(response);
     final data = _safeJsonDecode(response.body);
+
+    // ⬇️ DODAJ OVO
+    if (data is Map<String, dynamic>) {
+      AuthProvider.applyAuthFromDto(data);
+    }
+
     return fromJson(data);
   }
 
   Future<bool> delete(int id) async {
-    final url = '$baseUrl/$endpoint?id=$id';
+    final url = '$_baseUrl/$endpoint?id=$id';
     final uri = Uri.parse(url);
     final headers = getHeaders();
 

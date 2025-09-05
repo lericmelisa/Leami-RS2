@@ -9,7 +9,7 @@ using Leami.Model.SearchObjects;
 
 namespace Leami.Services.IServices
 {
-    public interface IOrderLService:ICRUDService<OrderResponse, BaseSearchObject, OrderInsertRequest, OrderInsertRequest>    
+    public interface IOrderLService:ICRUDService<OrderResponse, OrderSearchObject, OrderInsertRequest, OrderInsertRequest>    
     {
     }
 }
