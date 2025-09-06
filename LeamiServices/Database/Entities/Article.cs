@@ -21,10 +21,6 @@ namespace Leami.Model.Entities
         public int CategoryId { get; set; }
         public Category? Category { get; set; } 
 
-        //public List<ArticleOrder> ArticleOrder { get; set; } = new List<ArticleOrder>();    
-
-
-
-
+     
     }
 }

@@ -9,6 +9,7 @@ using Leami.Services.IServices;
 using Leami.Services.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 using MapsterMapper;
+using Microsoft.AspNetCore.Authorization;
 
 namespace LeamiWebAPI.Controllers
 {
@@ -26,7 +27,7 @@ namespace LeamiWebAPI.Controllers
         }
 
         [HttpPost]
-
+        [Authorize(Roles = "Guest")]
         public override async Task<ReviewResponse> Create([FromBody] ReviewInsertRequest request)
         {
             // 1) Provjera: ima li korisnik narudžbu?
@@ -51,7 +52,9 @@ namespace LeamiWebAPI.Controllers
 
             return _mapper.Map<ReviewResponse>(entity);
         }
-        
+
+
+        [Authorize(Roles = "Admin,Guest")]
         [HttpPut("softDelete")]
         public async Task<ReviewResponse> SoftDeleteAsync([FromBody] ReviewSoftDeleteRequest dto)
         {

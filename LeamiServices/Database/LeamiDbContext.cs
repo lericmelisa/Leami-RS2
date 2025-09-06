@@ -69,6 +69,14 @@ namespace Leami.Services.Database
                  .HasForeignKey(n => n.ReservationId)
                  .OnDelete(DeleteBehavior.Cascade);
 
+            b.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany(u => u.Notifications)
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+
+
             b.Entity<RestaurantInfo>()
                 .HasOne(ri => ri.Admin)
                 .WithOne(u => u.ManagedRestaurant)
@@ -86,7 +94,9 @@ namespace Leami.Services.Database
                  .HasColumnType("nvarchar(max)");
             });
 
-
+            b.Entity<Order>().Property(x => x.TotalAmount).HasPrecision(18, 2);
+            b.Entity<OrderItem>().Property(x => x.UnitPrice).HasPrecision(18, 2);
+            b.Entity<ReportExport>().Property(x => x.TotalRevenue).HasPrecision(18, 2);
         }
 
         public DbSet<Article>? Articles { get; set; }

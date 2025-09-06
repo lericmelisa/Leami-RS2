@@ -11,7 +11,7 @@ public class ReportsController : ControllerBase
     public ReportsController(IReportService svc) => _svc = svc;
 
     [HttpGet("stats")]
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetStats(
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to)
@@ -35,12 +35,12 @@ public class ReportsController : ControllerBase
     }
 
     [HttpGet("top-articles")]
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> TopArticles() =>
         Ok(await _svc.GetTopArticlesAsync());
 
     [HttpGet("revenue-by-month")]
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> RevenueByMonth(
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to)
@@ -52,7 +52,7 @@ public class ReportsController : ControllerBase
     }
 
         [HttpGet("download")]
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DownloadReport(
         [FromQuery] DateTime from,
         [FromQuery] DateTime to)
@@ -62,7 +62,7 @@ public class ReportsController : ControllerBase
     }
 
     [HttpGet("orders-by-month")]
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> OrdersByMonth([FromQuery] DateTime? from,
         [FromQuery] DateTime? to)
     {

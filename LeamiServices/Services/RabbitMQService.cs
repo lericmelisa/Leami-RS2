@@ -23,12 +23,33 @@ namespace Leami.Services.Services
                 UserName = username,
                 Password = password,
                 Port = port,
+                AutomaticRecoveryEnabled = true,           // auto reconnect
+                NetworkRecoveryInterval = TimeSpan.FromSeconds(5),
+                TopologyRecoveryEnabled = true
             };
 
-            _connection = _factory.CreateConnection();
-            channel = _connection.CreateModel();
+            // retry logika
+            const int maxRetries = 20;
+            for (int i = 1; i <= maxRetries; i++)
+            {
+                try
+                {
+                    _connection = _factory.CreateConnection();
+                    Console.WriteLine("RabbitMQ connection established.");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"RabbitMQ not ready, attempt {i}/{maxRetries}: {ex.Message}");
+                    if (i == maxRetries)
+                        throw; // nakon max pokušaja digni exception
+                    Thread.Sleep(3000); // čekaj 3 sekunde prije sljedećeg pokušaja
+                }
+            }
+
+            channel = _connection!.CreateModel();
             var queueName = Environment.GetEnvironmentVariable("RABBITMQ_QUEUE") ?? "confirmentque";
-            
+
             channel.QueueDeclare(
                 queue: queueName,
                 durable: false,
@@ -36,6 +57,7 @@ namespace Leami.Services.Services
                 autoDelete: false,
                 arguments: null);
         }
+
         public IModel GetChannel() => channel;
 
 

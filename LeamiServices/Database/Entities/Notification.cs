@@ -14,12 +14,12 @@ namespace Leami.Services.Database.Entities
     {
         [Key]
         public int NotificationId { get; set; }
-        public int? UserId { get; set; }
+        public int UserId { get; set; }
         public virtual User? User { get; set; }
         public int? ReservationId { get; set; }
         public virtual Reservation? Reservation { get; set; }
         public string Message { get; set; } =string.Empty;
-
+      
 
     }
 }

@@ -17,6 +17,8 @@ using DotNetEnv;
 using QuestPDF;
 using QuestPDF.Infrastructure;
 using System.Security.Claims;
+using LeamiWebAPI.Controllers;
+using Microsoft.Data.SqlClient;
 
 
 
@@ -54,8 +56,6 @@ StripeConfiguration.ApiKey = stripeSecret;
 builder.Services.AddScoped<StripeService>();
 builder.Logging.AddConsole();
 
-
-// registracija Mapstera
 QuestPDF.Settings.License = LicenseType.Community;
 
 builder.Services.AddSingleton(TypeAdapterConfig.GlobalSettings);
@@ -76,14 +76,8 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 
 
-
-
-
-var connectionString = builder.Configuration.GetConnectionString("LeamiConnection") ?? throw new InvalidOperationException("Missing connection string 'LeamiConnection'");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Missing connection string 'LeamiConnection'");
 builder.Services.AddDatabaseServices(connectionString);
-
-
-
 
 builder.Services.AddIdentity<User, Role>(options =>
 {
@@ -91,18 +85,16 @@ builder.Services.AddIdentity<User, Role>(options =>
     options.User.RequireUniqueEmail = true;
 
     // PASSWORD POLICY
-    options.Password.RequiredLength = 8;          // min dužina
-    options.Password.RequireDigit = true;         // mora imati broj
-    options.Password.RequireLowercase = true;     // malo slovo
-    options.Password.RequireUppercase = true;     // veliko slovo
-    options.Password.RequireNonAlphanumeric = false; //  spec. znak false
-    options.Password.RequiredUniqueChars = 1;     // različitih znakova
+    options.Password.RequiredLength = 8;        
+    options.Password.RequireDigit = true;        
+    options.Password.RequireLowercase = true;     
+    options.Password.RequireUppercase = true;    
+    options.Password.RequireNonAlphanumeric = false; 
+    options.Password.RequiredUniqueChars = 1;     
 
 }).AddEntityFrameworkStores<LeamiDbContext>().AddDefaultTokenProviders();
 
 builder.Services.AddHttpContextAccessor();
-
-// Add services to the container.var
 
 var jwt = builder.Configuration.GetSection("Jwt");
 var jwtKey = jwt["Key"];
@@ -164,10 +156,9 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-
-
 
 
 builder.Services.AddSwaggerGen(c =>
@@ -185,7 +176,6 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Unesi JWT token u formatu: Bearer {token}"
     });
 
-    // 2) Obavezan security requirement za sve (ili samo za neke) endpoint-e
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -201,105 +191,55 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 
-
-
-
-
 var app = builder.Build();
 
 
-static string Mask(string? s)
-    => string.IsNullOrEmpty(s) || s.Length < 8 ? "****" : $"{s[..4]}...{s[^4..]}";
-
-if (app.Environment.IsDevelopment())
+try
 {
-    app.Logger.LogInformation("Stripe key loaded: {Key}", Mask(stripeSecret));
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<LeamiDbContext>();
+    var env = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
+
+    Console.WriteLine("Applying EF Core migrations (if any)...");
+    try
+    {
+        await context.Database.MigrateAsync();
+    }
+    catch (SqlException ex) when (ex.Number == 1801) // Database already exists
+    {
+        // Ignorišemo – DB već postoji
+        Console.WriteLine("Database already exists. Continuing without creating.");
+    }
+
+    // Idempotentni seed
+    if (!await context.Users.AnyAsync())
+    {
+        Console.WriteLine("Database is empty. Starting data seeding...");
+        var seeder = new SeedController(context, env);
+        await seeder.Init();
+        Console.WriteLine("Data seeding completed successfully.");
+    }
+    else
+    {
+        Console.WriteLine("Database already contains data. Skipping seeding.");
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Startup DB step failed (non-fatal): {ex.Message}");
+ 
 }
 
-
-
-await using (var scope = app.Services.CreateAsyncScope())
-{
-    await Seeder.RunAsync(scope.ServiceProvider, app.Configuration);
-}
-
-
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-
-
 app.UseAuthentication();
 app.UseAuthorization();
-
-
 app.MapControllers();
 
 app.Run();
 
 
-static class Seeder
-{
-    public static async Task RunAsync(IServiceProvider services, IConfiguration config)
-    {
-        var db = services.GetRequiredService<LeamiDbContext>();
-        var roleMgr = services.GetRequiredService<RoleManager<Role>>();
-        var userMgr = services.GetRequiredService<UserManager<User>>();
-
-        // 1) Migrate DB
-        await db.Database.MigrateAsync();
-
-        // 2) Roles
-        string[] roles = { "Administrator", "Employee", "Guest" };
-        foreach (var name in roles)
-        {
-            if (!await roleMgr.RoleExistsAsync(name))
-            {
-                var res = await roleMgr.CreateAsync(new Role
-                {
-                    Name = name,
-                    NormalizedName = name.ToUpper(),
-                    Description = null
-                });
-                if (!res.Succeeded)
-                    throw new Exception("Role create failed: " + string.Join(", ", res.Errors.Select(e => e.Description)));
-            }
-        }
-
-        // 3) Admin user (čita iz appsettings ako postoji; ima fallback)
-        var adminEmail = config["Seed:AdminEmail"] ?? "admin@leami.local";
-        var adminPass = config["Seed:AdminPassword"] ?? "StrongPass!123"; // promijeni u prod
-
-        var admin = await userMgr.FindByEmailAsync(adminEmail);
-        if (admin is null)
-        {
-            admin = new User
-            {
-                UserName = adminEmail,
-                Email = adminEmail,
-                EmailConfirmed = true,
-                FirstName = "Admin",
-                LastName = "User",
-                Created = DateTime.UtcNow
-            };
-
-            var create = await userMgr.CreateAsync(admin, adminPass);
-            if (!create.Succeeded)
-                throw new Exception("Admin create failed: " + string.Join(", ", create.Errors.Select(e => e.Description)));
-        }
-
-        if (!await userMgr.IsInRoleAsync(admin, "Administrator"))
-            await userMgr.AddToRoleAsync(admin, "Administrator");
-
-        // 4) (opciono) upiši 1–1 AdminDetails za admina
-        if (await db.AdminDetails.FindAsync(admin.Id) is null)
-        {
-            db.AdminDetails.Add(new AdministratorDetails { UserId = admin.Id });
-            await db.SaveChangesAsync();
-        }
-    }
-}

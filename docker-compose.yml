@@ -1,0 +1,92 @@
+services:
+  leami-sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=MySuperStrong!Pass123
+      - MSSQL_PID=Developer
+    ports:
+      - "1401:1433"
+    expose:
+      - 1433
+    networks:
+      - leami-network
+    volumes:
+      - leami-sql-data:/var/opt/mssql
+  
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - leami-network
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    user: "999:999"
+  
+  leami-api:
+    build:
+      context: .
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings:DefaultConnection=Server=leami-sql,1433;Database=leami;User ID=sa;Password=MySuperStrong!Pass123;TrustServerCertificate=True
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=${RABBITMQ_USERNAME}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+
+      - Jwt__Key=${Jwt__Key}
+      - Jwt__Issuer=${Jwt__Issuer}
+      - Jwt__Audience=${Jwt__Audience}
+      - Jwt__ExpireMinutes=${Jwt__ExpireMinutes}
+      
+      - Stripe__SecretKey=${Stripe__SecretKey}
+      - Stripe__PublishableKey=${Stripe__PublishableKey}
+    ports:
+      - "7031:8080"
+    networks:
+      - leami-network
+    depends_on:
+      - leami-sql
+      - rabbitmq
+    restart: unless-stopped
+   
+  
+  leami-subscriber:
+    build:
+      context: .
+      dockerfile: ReservationEmailConsumer/Dockerfile
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=${RABBITMQ_USERNAME}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+      - RABBITMQ_QUEUE=${RABBITMQ_QUEUE}
+      - EmailSettings__FromEmail=${SMTP_USERNAME}
+      - EmailSettings__SmtpServer=${SMTP_HOST}
+      - EmailSettings__Port=${SMTP_PORT}
+      - EmailSettings__Password=${SMTP_PASSWORD}
+    networks:
+      - leami-network
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+
+networks:
+  leami-network:
+    driver: bridge
+
+volumes:
+  leami-sql-data:
+    driver: local
+  rabbitmq-data:
+    driver: local

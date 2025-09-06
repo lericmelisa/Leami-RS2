@@ -22,6 +22,7 @@ namespace LeamiWebAPI.Controllers
             _userService = userService;
         }
 
+        [Authorize(Roles = "Guest,Admin,Employee")]
         [HttpPut("{id}")]
         public override async Task<UserResponse> Update(int id, [FromBody] UserUpdateRequest request)
         {
@@ -73,7 +74,7 @@ namespace LeamiWebAPI.Controllers
             }
         }
 
-        [Authorize]
+        [Authorize(Roles = "Guest,Admin,Employee")]
         [HttpPost("change-password")]
         [ProducesResponseType(typeof(ChangePasswordResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest req)
@@ -92,7 +93,7 @@ namespace LeamiWebAPI.Controllers
             if (result == null) return Unauthorized();
             return Ok(result);
         }
-        [Authorize]
+        [Authorize(Roles = "Guest,Admin,Employee")]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromServices] IUserService users)
         {

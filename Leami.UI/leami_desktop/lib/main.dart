@@ -158,7 +158,7 @@ class _LoginPageState extends State<LoginPage> {
 
                       if (!mounted) return;
 
-                      if (roleName == 'administrator') {
+                      if (roleName == 'admin') {
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
                             builder: (_) => const MainMenuScreen(),

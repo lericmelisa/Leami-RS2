@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Stripe.Checkout;
 using Stripe;
 using Leami.Services.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace LeamiWebAPI.Controllers
 {
@@ -16,6 +17,8 @@ namespace LeamiWebAPI.Controllers
         {
             _stripeService = stripeService;
         }
+
+        [Authorize(Roles = "Guest")]
         [HttpPost("create-payment-intent")]
         public async Task<IActionResult> CreatePaymentIntent([FromBody] CreatePaymentIntentRequest request)
         {
@@ -48,6 +51,7 @@ namespace LeamiWebAPI.Controllers
             public long Amount { get; set; } // Amount in cents
         }
 
+        [Authorize(Roles = "Guest")]
         [HttpPost("create-checkout-session")]
         public ActionResult CreateCheckoutSession([FromBody] CreateCheckoutSessionRequest request)
         {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:leami_mobile/providers/auth_provider.dart';
 
 class StripeService {
   static const String _baseUrl = String.fromEnvironment(
@@ -31,7 +32,11 @@ class StripeService {
       final res = await http
           .post(
             Uri.parse('$_baseUrl/Stripe/create-payment-intent'),
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              if (AuthProvider.token != null)
+                'Authorization': 'Bearer ${AuthProvider.token}',
+            },
             body: json.encode({'amount': cents, 'currency': currency}),
           )
           .timeout(const Duration(seconds: 25));
@@ -67,8 +72,6 @@ class StripeService {
           paymentIntentClientSecret: clientSecret,
           merchantDisplayName: 'Leami Shop',
           style: ThemeMode.dark,
-          // merchantCountryCode: 'BA', // po želji
-          // allowsDelayedPaymentMethods: true,
         ),
       );
 
@@ -101,7 +104,11 @@ class StripeService {
       final response = await http
           .post(
             Uri.parse('$_baseUrl/Stripe/create-checkout-session'),
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              if (AuthProvider.token != null)
+                'Authorization': 'Bearer ${AuthProvider.token}',
+            },
             body: json.encode({
               'amount': amountInCents,
               'productName': productName,

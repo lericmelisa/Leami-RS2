@@ -21,24 +21,25 @@ namespace LeamiWebAPI.Controllers
         }
 
 
-        [Authorize(Roles = "Administrator")]
+        [Authorize(Roles = "Admin")]
         public override async Task<ArticleResponse> Create([FromBody] ArticleInsertRequest request)
         {
             return await articleService.CreateAsync(request);
         }
 
-        [Authorize(Roles = "Administrator")]
+        [Authorize(Roles = "Admin")]
         public override async Task<ArticleResponse> Update(int id, [FromBody] ArticleInsertRequest request)
         {
             return await articleService.UpdateAsync(id, request);
         }
 
-        [Authorize(Roles = "Administrator")]
+        [Authorize(Roles = "Admin")]
         public override async Task<bool> Delete(int id)
         {
             return await articleService.DeleteAsync(id);
         }
 
+        [Authorize(Roles = "Guest")]
         [HttpGet("{id}/recommend")]
         public async Task<List<ArticleResponse>> Recommend(int id, [FromQuery] int take = 3)
                => await articleService.RecommendAsync(id, take);

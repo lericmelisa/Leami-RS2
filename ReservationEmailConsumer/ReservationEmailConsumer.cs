@@ -44,12 +44,6 @@ public class ReservationEmailConsumer
         var consumer = new EventingBasicConsumer(_channel);
         consumer.Received += (model, ea) =>
         {
-            //var body = ea.Body.ToArray();
-            //var message = Encoding.UTF8.GetString(body);
-            //Console.WriteLine(" [x] Received {0}", message);
-            //var email = ExtractEmailFromMessage(message);
-
-
             var payload = Encoding.UTF8.GetString(ea.Body.ToArray());
             Console.WriteLine(" [x] Received {0}", payload);
 
@@ -77,9 +71,4 @@ public class ReservationEmailConsumer
                              consumer: consumer);
     }
 
-    private string ExtractEmailFromMessage(string message)
-    {
-        var parts = message.Split(' ');
-        return parts.Length > 3 ? parts[3] : string.Empty;
-    }
 }
