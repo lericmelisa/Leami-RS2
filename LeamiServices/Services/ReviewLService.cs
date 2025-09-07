@@ -6,6 +6,7 @@ using Leami.Services.Database;
 using Leami.Services.Database.Entities;
 using Leami.Services.IServices;
 using MapsterMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -13,6 +14,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Net.WebRequestMethods;
 
 namespace Leami.Services.Services
 {
@@ -20,17 +22,23 @@ namespace Leami.Services.Services
     {
         protected readonly LeamiDbContext _context;
         protected readonly IMapper mapper;
-        public ReviewLService(LeamiDbContext dbContext, IMapper _mapper) : base(dbContext, _mapper)
+        private readonly IHttpContextAccessor _http;
+
+        public ReviewLService(LeamiDbContext dbContext, IMapper _mapper, IHttpContextAccessor http) : base(dbContext, _mapper)
         {
             _context = dbContext;
-            mapper = _mapper;    
-
+            mapper = _mapper;
+            _http = http;   
         }
+        private bool CallerIsEmployee =>
+   _http.HttpContext?.User?.IsInRole("Employee") == true;
 
         protected override IQueryable<Review> ApplyFilter(IQueryable<Review> query, ReviewSearchObject search)
         {
-            
 
+            query = query.Include(r => r.ReviewerUser);
+
+            if (CallerIsEmployee)
             query = query.Include(r => r.ReviewerUser)
                 .Where(r => !r.IsDeleted);
 

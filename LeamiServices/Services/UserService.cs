@@ -150,7 +150,7 @@ namespace Leami.Services.IServices
             {
                 var dtoNull = mapper.Map<UserResponse>(user);
                 var rnNull = await _userManager.GetRolesAsync(user);
-                var pickNull = rnNull.Contains("Administrator") ? "Administrator"
+                var pickNull = rnNull.Contains("Admin") ? "Administrator"
                             : rnNull.Contains("Employee") ? "Employee"
                             : rnNull.Contains("Guest") ? "Guest"
                             : rnNull.FirstOrDefault();
@@ -271,7 +271,7 @@ namespace Leami.Services.IServices
             var dto = mapper.Map<UserResponse>(user);
 
             var roleNames = await _userManager.GetRolesAsync(user);
-            string? pick = roleNames.Contains("Administrator") ? "Administrator"
+            string? pick = roleNames.Contains("Admin") ? "Administrator"
                        : roleNames.Contains("Employee") ? "Employee"
                        : roleNames.Contains("Guest") ? "Guest"
                        : roleNames.FirstOrDefault();
@@ -338,7 +338,7 @@ namespace Leami.Services.IServices
             }
 
             // Administrator
-            if (roleNames.Contains("Administrator"))
+            if (roleNames.Contains("Admin"))
             {
                 if (user.AdminDetails == null)
                 {
@@ -377,7 +377,7 @@ namespace Leami.Services.IServices
         }
       
         private bool CallerIsAdmin =>
-      _http.HttpContext?.User?.IsInRole("Administrator") == true;
+      _http.HttpContext?.User?.IsInRole("Admin") == true;
         public override async Task<UserResponse> CreateAsync(UserRegistrationRequest request)
         {
             if (await _userManager.FindByEmailAsync(request.Email) is not null) 
@@ -559,7 +559,7 @@ namespace Leami.Services.IServices
                 var roleNames = await _userManager.GetRolesAsync(u);
 
                 // odaberi prioritetnu
-                string? pick = roleNames.Contains("Administrator") ? "Administrator"
+                string? pick = roleNames.Contains("Admin") ? "Administrator"
                              : roleNames.Contains("Employee") ? "Employee"
                              : roleNames.Contains("Guest") ? "Guest"
                              : roleNames.FirstOrDefault();

@@ -33,7 +33,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
     var headers = getHeaders();
 
     var response = await http.get(uri, headers: headers);
-    debugPrint(response.body);
+
 
     ensureValidResponseOrThrow(response);
     final data = jsonDecode(response.body);
@@ -64,11 +64,12 @@ abstract class BaseProvider<T> with ChangeNotifier {
     final response = await http.post(uri, headers: headers, body: jsonRequest);
 
     dev.log('Status: ${response.statusCode}', name: 'HTTP');
-    dev.log('Body: ${response.body}', name: 'HTTP');
+
 
     ensureValidResponseOrThrow(response);
 
     final data = _safeJsonDecode(response.body);
+
     return fromJson(data);
   }
 
@@ -106,7 +107,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
     final response = await http.delete(uri, headers: headers);
 
     dev.log('Status: ${response.statusCode}', name: 'HTTP');
-    dev.log('Body: ${response.body}', name: 'HTTP');
+
 
     ensureValidResponseOrThrow(response);
 

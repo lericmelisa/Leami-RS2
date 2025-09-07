@@ -94,6 +94,26 @@ namespace Leami.Services.Database
                  .HasColumnType("nvarchar(max)");
             });
 
+
+
+
+            b.Entity<IdentityUserRole<int>>(ur =>
+            {
+                ur.HasKey(x => new { x.UserId, x.RoleId });
+
+                ur.HasOne<User>()
+                  .WithMany(u => u.UserRoles)
+                  .HasForeignKey(x => x.UserId)
+                  .IsRequired()
+                  .OnDelete(DeleteBehavior.Cascade);
+
+                ur.HasOne<Role>()
+                  .WithMany(r => r.UserRoles)
+                  .HasForeignKey(x => x.RoleId)
+                  .IsRequired()
+                  .OnDelete(DeleteBehavior.Cascade);
+            });
+
             b.Entity<Order>().Property(x => x.TotalAmount).HasPrecision(18, 2);
             b.Entity<OrderItem>().Property(x => x.UnitPrice).HasPrecision(18, 2);
             b.Entity<ReportExport>().Property(x => x.TotalRevenue).HasPrecision(18, 2);

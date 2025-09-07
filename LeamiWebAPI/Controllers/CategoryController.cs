@@ -16,19 +16,19 @@ namespace LeamiWebAPI.Controllers
         {
             categoryService = _service;
         }
-        [Authorize(Roles = "Administrator")]
+        [Authorize(Roles = "Admin")]
         public override async Task<CategoryResponse> Create([FromBody] CategoryInsertRequest request)
         {
             return await categoryService.CreateAsync(request);
         }
 
-        [Authorize(Roles = "Administrator")]
+        [Authorize(Roles = "Admin")]
         public override async Task<CategoryResponse> Update(int id, [FromBody] CategoryInsertRequest request)
         {
             return await categoryService.UpdateAsync(id, request);
         }
 
-        [Authorize(Roles = "Administrator")]
+        [Authorize(Roles = "Admin")]
         public override async Task<bool> Delete(int id)
         {
             return await categoryService.DeleteAsync(id);

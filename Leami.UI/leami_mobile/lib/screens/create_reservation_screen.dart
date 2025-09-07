@@ -80,11 +80,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                       ),
                       _futureDateTimeValidator,
                     ]),
-                    onChanged: (_) {
-                      // kad promijeniš datum, revalidiraj vrijeme (cross-field)
-                      _formKey.currentState?.fields['reservationTimeObj']
-                          ?.validate();
-                    },
+                    onChanged: (_) {},
                   ),
                   const SizedBox(height: 12),
 

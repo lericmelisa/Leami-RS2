@@ -79,6 +79,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   if (!RegExp(r'[A-Z]').hasMatch(v))
                     return 'Mora imati veliko slovo.';
                   if (!RegExp(r'\d').hasMatch(v)) return 'Mora imati broj.';
+                  if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-]').hasMatch(v)) {
+                    return 'Mora imati barem jedan specijalan karakter.';
+                  }
                   return null;
                 },
               ),

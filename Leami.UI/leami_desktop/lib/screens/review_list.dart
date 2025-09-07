@@ -15,7 +15,6 @@ class _ReviewListScreenState extends State<ReviewListScreen> {
   late ReviewProvider _provider;
   SearchResult<Review>? _reviews;
 
-  // scroll kontroleri (kao kod Users)
   final _hScrollCtrl = ScrollController();
   final _vScrollCtrl = ScrollController();
 
@@ -118,8 +117,6 @@ class _ReviewListScreenState extends State<ReviewListScreen> {
       return const Center(child: Text('Nema recenzija.'));
     }
 
-    // Minimalna širina tabele (sumarno kolone) — da forsiramo horizontalni skrol kada treba
-    // Korisnik(180) | Ocjena(80) | Komentar(420) | Datum(120) | Izbrisano(100) | Akcije(120)
     const double contentMinWidth = 180 + 80 + 420 + 120 + 100 + 120;
 
     return LayoutBuilder(
@@ -219,7 +216,6 @@ class _ReviewListScreenState extends State<ReviewListScreen> {
           );
         }).toList();
 
-        // pošto smo koristili _CenterText kao placeholder za Ocjena, zamijeni ga stvarnom vrijednošću
         for (var i = 0; i < rows.length; i++) {
           final r = list[i];
           final ratingTxt = (r.rating != null)
@@ -325,8 +321,6 @@ class _ReviewListScreenState extends State<ReviewListScreen> {
   }
 }
 
-/// Mali helper samo da centriramo placeholder u prvoj iteraciji (pre-sastavljanje rows);
-/// odmah ga zamjenjujemo stvarnim tekstom iznad.
 class _CenterText extends StatelessWidget {
   const _CenterText();
 
