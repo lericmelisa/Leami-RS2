@@ -40,6 +40,150 @@ namespace Leami.Services.IServices
             _configuration = configuration;
             _http = http;
         }
+        public async Task<UserResponse> UpdateAsyncAdmin(int id, UserUpdateRequest req)
+        {
+            if (_http.HttpContext?.User?.IsInRole("Admin") != true)
+                throw new UnauthorizedAccessException("Samo administrator može ažurirati korisnike.");
+
+            if (req == null) throw new ArgumentNullException(nameof(req));
+
+            var user = await _context.Users
+                .Include(u => u.EmployeeDetails)
+                .Include(u => u.AdminDetails)
+                .Include(u => u.GuestDetails)
+                .FirstOrDefaultAsync(u => u.Id == id)
+                ?? throw new KeyNotFoundException("User not found.");
+
+            if (!string.IsNullOrWhiteSpace(req.FirstName))
+                user.FirstName = req.FirstName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(req.LastName))
+                user.LastName = req.LastName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(req.Email))
+            {
+                var email = req.Email.Trim();
+                if (!string.Equals(email, user.Email, StringComparison.OrdinalIgnoreCase))
+                {
+            
+                     if (await _userManager.FindByEmailAsync(email) is not null)
+                        throw new InvalidOperationException("Korisnik s ovom email adresom već postoji.");
+
+                    user.Email = email;
+                    user.UserName = email; // strategija: UserName = Email
+                    user.NormalizedEmail = email.ToUpperInvariant();
+                    user.NormalizedUserName = email.ToUpperInvariant();
+                }
+            }
+
+            if (req.UserImage is not null)
+                user.UserImage = req.UserImage;
+
+            if (!string.IsNullOrWhiteSpace(req.PhoneNumber))
+            {
+                var phoneRes = await _userManager.SetPhoneNumberAsync(user, req.PhoneNumber!.Trim());
+                if (!phoneRes.Succeeded)
+                    throw new InvalidOperationException("Set phone failed: " + string.Join("; ", phoneRes.Errors.Select(e => e.Description)));
+            }
+
+        
+            if (!string.IsNullOrWhiteSpace(req.Password))
+            {
+             
+                var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var pwdRes = await _userManager.ResetPasswordAsync(user, resetToken, req.Password!);
+                if (!pwdRes.Succeeded)
+                    throw new InvalidOperationException("Set password failed: " + string.Join("; ", pwdRes.Errors.Select(e => e.Description)));
+            }
+
+            // 4) Role sync — samo ako je poslan RoleIds
+            var currentRoleNames = (await _userManager.GetRolesAsync(user))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            HashSet<string> targetRoleNames = currentRoleNames;
+
+            if (req.RoleIds is not null && req.RoleIds.Count > 0)
+            {
+                var ids = req.RoleIds.Distinct().ToList();
+                var roles = await _roleManager.Roles.Where(r => ids.Contains(r.Id)).ToListAsync();
+                if (roles.Count != ids.Count)
+                    throw new ArgumentException("Jedna ili više rola ne postoji.");
+
+                targetRoleNames = roles.Select(r => r.Name!)
+                                       .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                var toAdd = targetRoleNames.Except(currentRoleNames).ToArray();
+                var toRem = currentRoleNames.Except(targetRoleNames).ToArray();
+
+                if (toAdd.Length > 0)
+                {
+                    var addRes = await _userManager.AddToRolesAsync(user, toAdd);
+                    if (!addRes.Succeeded)
+                        throw new InvalidOperationException("Add roles failed: " + string.Join("; ", addRes.Errors.Select(e => e.Description)));
+                }
+                if (toRem.Length > 0)
+                {
+                    var remRes = await _userManager.RemoveFromRolesAsync(user, toRem);
+                    if (!remRes.Succeeded)
+                        throw new InvalidOperationException("Remove roles failed: " + string.Join("; ", remRes.Errors.Select(e => e.Description)));
+                }
+            }
+
+            bool hasEmployeeFields = req.JobTitle != null || req.HireDate != null || req.Note != null;
+            if (targetRoleNames.Contains("Employee") && hasEmployeeFields)
+            {
+                if (user.EmployeeDetails == null)
+                {
+                    user.EmployeeDetails = new EmployeeDetails
+                    {
+                        UserId = user.Id,
+                        JobTitle = req.JobTitle ?? "Employee",
+                        HireDate = req.HireDate ?? DateTime.UtcNow,
+                        Note = req.Note ?? string.Empty
+                    };
+                    _context.EmployeeDetails.Add(user.EmployeeDetails);
+                }
+                else
+                {
+                    if (req.JobTitle != null) user.EmployeeDetails.JobTitle = req.JobTitle;
+                    if (req.HireDate != null) user.EmployeeDetails.HireDate = req.HireDate.Value;
+                    if (req.Note != null) user.EmployeeDetails.Note = req.Note;
+                    _context.EmployeeDetails.Update(user.EmployeeDetails);
+                }
+            }
+           
+             else if (!targetRoleNames.Contains("Employee") && user.EmployeeDetails != null)
+            {
+                _context.EmployeeDetails.Remove(user.EmployeeDetails);
+                user.EmployeeDetails = null;
+            }
+
+            await _context.SaveChangesAsync();
+
+          
+            var dto = mapper.Map<UserResponse>(user);
+
+            var roleNames = await _userManager.GetRolesAsync(user);
+            var primaryRole = await _roleManager.Roles
+                .Where(r => roleNames.Contains(r.Name))
+                .OrderByDescending(r => r.Name == "Admin")
+                .ThenByDescending(r => r.Name == "Employee")
+                .FirstOrDefaultAsync();
+
+            dto.Role = primaryRole == null ? null : new RolesResponse
+            {
+                Roleid = primaryRole.Id,
+                RoleName = primaryRole.Name!,
+                Description = primaryRole.Description
+            };
+
+            dto.JobTitle = user.EmployeeDetails?.JobTitle;
+            dto.HireDate = user.EmployeeDetails?.HireDate;
+            dto.Note = user.EmployeeDetails?.Note;
+
+            return dto;
+        }
+
 
         public async Task<ChangePasswordResponse> ChangePasswordAsync(ChangePasswordRequest req)
         {
@@ -296,7 +440,13 @@ namespace Leami.Services.IServices
             dto.HireDate = user.EmployeeDetails?.HireDate;
             dto.Note = user.EmployeeDetails?.Note;
 
-            (dto.Token, dto.Expiration) = await GenerateJwtAsync(user);
+            var callerId = _http.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (callerId == user.Id.ToString())
+            {
+                (dto.Token, dto.Expiration) = await GenerateJwtAsync(user);
+            }
+
+    
             return dto;
 
 

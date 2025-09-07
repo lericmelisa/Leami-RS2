@@ -34,7 +34,6 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
     var response = await http.get(uri, headers: headers);
 
-
     ensureValidResponseOrThrow(response);
     final data = jsonDecode(response.body);
 
@@ -65,7 +64,6 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
     dev.log('Status: ${response.statusCode}', name: 'HTTP');
 
-
     ensureValidResponseOrThrow(response);
 
     final data = _safeJsonDecode(response.body);
@@ -90,7 +88,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
     final data = _safeJsonDecode(response.body);
     if (data is Map<String, dynamic>) {
-      AuthProvider.applyAuthFromDto(data); // ⟵ OVDE POKUPIŠ NOVI TOKEN
+      AuthProvider.applyAuthFromDto(data); 
     }
     return fromJson(data);
   }
@@ -108,7 +106,6 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
     dev.log('Status: ${response.statusCode}', name: 'HTTP');
 
-
     ensureValidResponseOrThrow(response);
 
     return response.body.toLowerCase().contains("true");
@@ -118,7 +115,6 @@ abstract class BaseProvider<T> with ChangeNotifier {
     final code = response.statusCode;
     if (code >= 200 && code <= 299) return;
 
-    // Pokušaj pročitati poruku iz JSON-a
     String message = response.body;
     try {
       final j = jsonDecode(response.body);

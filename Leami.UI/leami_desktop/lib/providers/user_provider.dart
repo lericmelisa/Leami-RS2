@@ -65,4 +65,17 @@ class UserProvider extends BaseProvider<User> {
     );
     return User.fromJson(jsonDecode(res.body));
   }
+
+  Future<User> updateAdmin(int id, Map<String, dynamic> request) async {
+    final uri = Uri.parse('$baseUrl/User/$id/admin');
+    final headers = getHeaders();
+    final body = jsonEncode(request);
+
+    final resp = await http.put(uri, headers: headers, body: body);
+    ensureValidResponseOrThrow(resp);
+
+    final data = jsonDecode(resp.body);
+
+    return fromJson(data);
+  }
 }

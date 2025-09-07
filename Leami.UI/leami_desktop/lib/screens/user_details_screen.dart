@@ -168,7 +168,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
               }
             });
           } else {
-            widget.user = await userProvider.update(widget.user!.id!, raw);
+            widget.user = await userProvider.updateAdmin(widget.user!.id!, raw);
 
             // Prikaži poruku o uspjehu
             ScaffoldMessenger.of(context).showSnackBar(

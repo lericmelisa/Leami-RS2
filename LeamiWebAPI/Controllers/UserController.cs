@@ -42,6 +42,27 @@ namespace LeamiWebAPI.Controllers
                 return default!;
             }
         }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPut("{id:int}/admin")]
+        public async Task<UserResponse> UpdateAdmin(int id, [FromBody] UserUpdateRequest request)
+        {
+            try
+            {
+                return await _userService.UpdateAsyncAdmin(id, request);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is SqlException sql && (sql.Number == 2601 || sql.Number == 2627))
+            {
+                Response.StatusCode = StatusCodes.Status409Conflict;
+                await Response.WriteAsJsonAsync(new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Title = "Conflict",
+                    Detail = "Email/korisničko ime je već u upotrebi."
+                });
+                return default!;
+            }
+        }
         [AllowAnonymous]
         [HttpPost("Registration")]
         public override async Task<UserResponse> Create([FromBody] UserRegistrationRequest request)
