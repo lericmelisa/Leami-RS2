@@ -52,7 +52,7 @@ Email: employee@leami.local
 Lozinka: test
 
 
-Radnik i employee se pokreću na desktop strani.
+Admin i employee se pokreću na desktop strani.
 
 Gost:
 
