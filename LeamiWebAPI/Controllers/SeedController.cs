@@ -60,13 +60,13 @@ namespace LeamiWebAPI.Controllers
             {
                 var users = new List<User>
                 {
-                    MakeUser("admin",    "admin",    "Admin",  "User",     "test", hasher),
-                    MakeUser("employee", "employee", "Ema",    "Zaposlenik","test", hasher),
-                    MakeUser("guest",     "guest",     "Koris",  "Nik",      "test", hasher),
+                    MakeUser("admin",    "admin@leami.local",    "Admin",  "User",     "test", hasher),
+                    MakeUser("employee", "employee@leami.local", "Ema",    "Zaposlenik","test", hasher),
+                    MakeUser("guest",     "guest@leami.local",     "Koris",  "Nik",      "test", hasher),
 
                     // radi zahtjeva iz README-a:
-                    MakeUser("desktop",  "desktop",  "Desk",   "Top",      "test", hasher),
-                    MakeUser("mobile",   "mobile",   "Mobi",   "Le",       "test", hasher),
+                    MakeUser("sarah",  "sarah@leami.local",  "Sarah",   "Ralak",     "test", hasher),
+                    MakeUser("amna",   "amna@leami.local",   "Amna",   "Anma",       "test", hasher),
 
                     // još malo korisnika (gosti) radi volumena
                     MakeUser("lana",     "lana@leami.local",     "Lana",   "Kovač",    "test", hasher),
@@ -87,8 +87,8 @@ namespace LeamiWebAPI.Controllers
                     new IdentityUserRole<int> { UserId = users.First(u=>u.UserName=="admin").Id,    RoleId = roleAdmin.Id    },
                     new IdentityUserRole<int> { UserId = users.First(u=>u.UserName=="employee").Id, RoleId = roleEmployee.Id },
                     new IdentityUserRole<int> { UserId = users.First(u=>u.UserName=="guest").Id,     RoleId = roleGuest.Id    },
-                    new IdentityUserRole<int> { UserId = users.First(u=>u.UserName=="desktop").Id,  RoleId = roleGuest.Id    },
-                    new IdentityUserRole<int> { UserId = users.First(u=>u.UserName=="mobile").Id,   RoleId = roleGuest.Id    },
+                    new IdentityUserRole<int> { UserId = users.First(u=>u.UserName=="sarah").Id,  RoleId = roleGuest.Id    },
+                    new IdentityUserRole<int> { UserId = users.First(u=>u.UserName=="amna").Id,   RoleId = roleGuest.Id    },
                     new IdentityUserRole<int> { UserId = users.First(u=>u.UserName=="lana").Id,     RoleId = roleGuest.Id    },
                     new IdentityUserRole<int> { UserId = users.First(u=>u.UserName=="amir").Id,     RoleId = roleGuest.Id    },
                     new IdentityUserRole<int> { UserId = users.First(u=>u.UserName=="ivana").Id,    RoleId = roleGuest.Id    },
@@ -219,10 +219,10 @@ namespace LeamiWebAPI.Controllers
             {
                 var reservations = new List<Reservation>
                 {
-                    R(userGuest.Id,   DateOnly.FromDateTime(DateTime.Today.AddDays(1)),  new TimeOnly(19, 30), 4, RES_STATUS_PENDING,   "Porodična večera",   1, "+387 61 111 222", "Sto uz prozor"),
-                    R(userDesktop.Id, DateOnly.FromDateTime(DateTime.Today.AddDays(3)),  new TimeOnly(20, 00), 2, RES_STATUS_CONFIRMED, "Poslovni sastanak",  0, "+387 61 222 333", "Tiši dio sale"),
-                    R(userMobile.Id,  DateOnly.FromDateTime(DateTime.Today.AddDays(2)),  new TimeOnly(18, 00), 6, RES_STATUS_REJECTED,  "Rođendan",           2, "+387 61 333 444", "Baloni"),
-                    R(lana.Id,        DateOnly.FromDateTime(DateTime.Today.AddDays(5)),  new TimeOnly(17, 30), 3, RES_STATUS_PENDING,   "Prijatelji",         0, "+387 61 444 555", null),
+                    R(userGuest.Id,   DateOnly.FromDateTime(DateTime.Today.AddDays(10)),  new TimeOnly(19, 30), 4, RES_STATUS_PENDING,   "Porodična večera",   1, "+387 61 111 222", "Sto uz prozor"),
+                    R(userDesktop.Id, DateOnly.FromDateTime(DateTime.Today.AddDays(13)),  new TimeOnly(20, 00), 2, RES_STATUS_CONFIRMED, "Poslovni sastanak",  0, "+387 61 222 333", "Tiši dio sale"),
+                    R(userMobile.Id,  DateOnly.FromDateTime(DateTime.Today.AddDays(12)),  new TimeOnly(18, 00), 6, RES_STATUS_REJECTED,  "Rođendan",           2, "+387 61 333 444", "Baloni"),
+                    R(lana.Id,        DateOnly.FromDateTime(DateTime.Today.AddDays(15)),  new TimeOnly(17, 30), 3, RES_STATUS_PENDING,   "Prijatelji",         0, "+387 61 444 555", null),
                     R(amir.Id,        DateOnly.FromDateTime(DateTime.Today.AddDays(-1)), new TimeOnly(21, 15), 2, RES_STATUS_CONFIRMED, "Iznenađenje",        0, "+387 61 555 666", "Skrivena torta"),
                 };
 
