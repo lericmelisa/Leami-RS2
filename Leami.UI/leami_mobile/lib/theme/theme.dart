@@ -1,14 +1,12 @@
-// lib/theme/theme.dart
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color bg = Color(0xFF0F1117); // pozadina
-  static const Color surface = Color(0xFF1A1F2B); // paneli
-  static const Color card = Color(0xFF242A38); // kartice
-  static const Color outline = Color(0xFF373C4B); // rubovi
-  static const Color primary = Color(0xFFF29F57); // narandžasti akcent
-  static const Color onPrimary = Colors.black; // tekst na akcentu
-
+  static const Color bg = Color(0xFF0F1117);
+  static const Color surface = Color(0xFF1A1F2B);
+  static const Color card = Color(0xFF242A38);
+  static const Color outline = Color(0xFF373C4B);
+  static const Color primary = Color(0xFFF29F57);
+  static const Color onPrimary = Colors.black; 
   static ThemeData dark() {
     const scheme = ColorScheme(
       brightness: Brightness.dark,
@@ -29,7 +27,6 @@ class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: bg,
       canvasColor: bg,
-
       appBarTheme: const AppBarTheme(
         backgroundColor: surface,
         foregroundColor: Colors.white,
@@ -41,7 +38,6 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
       ),
-
       dialogTheme: const DialogThemeData(
         backgroundColor: surface,
         titleTextStyle: TextStyle(
@@ -51,17 +47,15 @@ class AppTheme {
         ),
         contentTextStyle: TextStyle(color: Colors.white, fontSize: 14),
       ),
-
       cardTheme: CardThemeData(
         color: card,
         elevation: 1,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: const Color(0xFF1B2130),
-        hintStyle: TextStyle(color: Colors.white70),
+        hintStyle: const TextStyle(color: Colors.white70),
         labelStyle: const TextStyle(color: Colors.white),
         border: OutlineInputBorder(
           borderSide: const BorderSide(color: outline),
@@ -72,7 +66,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
         ),
         focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: primary, width: 1.6),
+          borderSide: const BorderSide(color: primary, width: 1.6),
           borderRadius: BorderRadius.circular(12),
         ),
         contentPadding: const EdgeInsets.symmetric(
@@ -80,7 +74,6 @@ class AppTheme {
           vertical: 12,
         ),
       ),
-
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
@@ -91,7 +84,6 @@ class AppTheme {
           ),
         ),
       ),
-
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: primary,
@@ -100,7 +92,6 @@ class AppTheme {
           ),
         ),
       ),
-
       dropdownMenuTheme: const DropdownMenuThemeData(
         textStyle: TextStyle(color: Colors.white),
         inputDecorationTheme: InputDecorationTheme(
@@ -109,10 +100,8 @@ class AppTheme {
           border: OutlineInputBorder(),
         ),
       ),
-
       iconTheme: const IconThemeData(color: Colors.white),
       dividerColor: outline,
-
       tabBarTheme: const TabBarThemeData(
         indicatorSize: TabBarIndicatorSize.label,
         labelColor: onPrimary,

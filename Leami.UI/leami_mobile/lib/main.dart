@@ -12,6 +12,7 @@ import 'package:leami_mobile/providers/restaurant_info_provider.dart';
 import 'package:leami_mobile/providers/cart_provider.dart';
 import 'package:leami_mobile/providers/order_provider.dart';
 import 'package:leami_mobile/providers/order_response_provider.dart';
+import 'package:leami_mobile/screens/accessibility_settings.dart';
 import 'package:leami_mobile/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -37,6 +38,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => OrderResponseProvider()),
+        ChangeNotifierProvider(create: (_) => AccessibilitySettings()),
       ],
       child: const MyApp(),
     ),
@@ -47,17 +49,92 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<AccessibilitySettings>();
+    final baseTheme = AppTheme.dark();
+    final contrastTheme = settings.highContrast
+        ? baseTheme.copyWith(
+            colorScheme: baseTheme.colorScheme.copyWith(
+              primary: Colors.amberAccent, // veći kontrast
+              onPrimary: Colors.black,
+              surface: const Color(0xFF000000),
+              onSurface: Colors.white,
+              onSurfaceVariant: Colors.white,
+            ),
+            scaffoldBackgroundColor: const Color(0xFF000000),
+            canvasColor: const Color(0xFF000000),
+            cardTheme: baseTheme.cardTheme.copyWith(
+              color: const Color(0xFF000000),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: Colors.white, width: 1.5),
+              ),
+              elevation: 0,
+            ),
+            inputDecorationTheme: baseTheme.inputDecorationTheme.copyWith(
+              fillColor: const Color(0xFF000000),
+              hintStyle: const TextStyle(color: Colors.white70),
+              labelStyle: const TextStyle(color: Colors.white),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white, width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Colors.amberAccent,
+                  width: 2.0,
+                ),
+              ),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amberAccent,
+                foregroundColor: Colors.black,
+              ),
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(foregroundColor: Colors.amberAccent),
+            ),
+            iconTheme: const IconThemeData(color: Colors.white),
+            dividerColor: Colors.white38,
+          )
+        : baseTheme;
+    ThemeData themed = contrastTheme;
+
+    if (settings.largeControls) {
+      themed = _applyLargeControls(themed);
+    }
+
+    final spacedTextTheme = buildSpacedTextTheme(
+      themed.textTheme,
+      settings.lineHeight,
+      settings.letterSpacing,
+      settings.boldText,
+    );
+    final theme = themed.copyWith(
+      textTheme: spacedTextTheme,
+      primaryTextTheme: spacedTextTheme,
+    );
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
-      darkTheme: AppTheme.dark(),
-      theme: AppTheme.dark(),
+      darkTheme: theme,
+      theme: theme,
       initialRoute: '/login',
       routes: {
         '/login': (_) => const LoginPage(),
         '/register': (_) => const RegistrationPage(),
       },
       home: const RegistrationPage(),
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        return MediaQuery(
+          data: media.copyWith(
+            textScaler: TextScaler.linear(settings.textScale),
+          ),
+          child: child!,
+        );
+      },
     );
   }
 }
@@ -370,4 +447,79 @@ class _RegistrationPageState extends State<RegistrationPage> {
       ),
     );
   }
+}
+
+TextTheme buildSpacedTextTheme(
+  TextTheme base,
+  double lineHeightFactor,
+  double letterSpacingDelta,
+  bool boldText,
+) {
+  TextStyle? applyTo(TextStyle? style) {
+    if (style == null) return null;
+    return style.copyWith(
+      height: (style.height ?? 1.0) * lineHeightFactor,
+      letterSpacing: (style.letterSpacing ?? 0.0) + letterSpacingDelta,
+      fontWeight: boldText ? FontWeight.w900 : style.fontWeight,
+    );
+  }
+
+  return base.copyWith(
+    displayLarge: applyTo(base.displayLarge),
+    displayMedium: applyTo(base.displayMedium),
+    displaySmall: applyTo(base.displaySmall),
+    headlineLarge: applyTo(base.headlineLarge),
+    headlineMedium: applyTo(base.headlineMedium),
+    headlineSmall: applyTo(base.headlineSmall),
+    titleLarge: applyTo(base.titleLarge),
+    titleMedium: applyTo(base.titleMedium),
+    titleSmall: applyTo(base.titleSmall),
+    bodyLarge: applyTo(base.bodyLarge),
+    bodyMedium: applyTo(base.bodyMedium),
+    bodySmall: applyTo(base.bodySmall),
+    labelLarge: applyTo(base.labelLarge),
+    labelMedium: applyTo(base.labelMedium),
+    labelSmall: applyTo(base.labelSmall),
+  );
+}
+
+ThemeData _applyLargeControls(ThemeData base) {
+  const double bigIconSize = 28.0;
+
+  final IconThemeData enlargedIconTheme = base.iconTheme.copyWith(
+    size: bigIconSize,
+  );
+  return base.copyWith(
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: base.colorScheme.primary,
+        foregroundColor: base.colorScheme.onPrimary,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        minimumSize: const Size(80, 56), // ~48x48 tap target
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: base.colorScheme.primary,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        minimumSize: const Size(64, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        padding: const EdgeInsets.all(12),
+        minimumSize: const Size(48, 48),
+      ),
+    ),
+    iconTheme: enlargedIconTheme,
+    appBarTheme: base.appBarTheme.copyWith(
+      iconTheme: (base.appBarTheme.iconTheme ?? enlargedIconTheme).copyWith(
+        size: bigIconSize,
+      ),
+      actionsIconTheme: (base.appBarTheme.actionsIconTheme ?? enlargedIconTheme)
+          .copyWith(size: bigIconSize),
+    ),
+  );
 }

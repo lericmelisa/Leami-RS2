@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:leami_mobile/screens/accessibility_panel.dart';
+import 'package:leami_mobile/screens/accessibility_settings.dart';
 import 'package:leami_mobile/screens/guest_user_screen.dart';
 import 'package:leami_mobile/screens/login_page.dart';
 import 'package:leami_mobile/screens/orders_history_screen.dart';
@@ -180,6 +182,12 @@ class _GuestArticlesScreenState extends State<GuestArticlesScreen> {
     final cart = context.watch<CartProvider>();
     final cartCount = cart.totalItems;
 
+    final settings = context.watch<AccessibilitySettings>();
+    final bool bigUi = settings.largeControls || settings.textScale >= 1.4;
+
+    final double toolbarHeight = bigUi ? 64 : kToolbarHeight;
+    final double searchBarHeight = bigUi ? 72 : 56;
+
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -207,14 +215,22 @@ class _GuestArticlesScreenState extends State<GuestArticlesScreen> {
     return Scaffold(
       drawer: _buildSideMenu(),
       appBar: AppBar(
-        title: const Text('Leami'),
+        toolbarHeight: toolbarHeight,
+        title: const Text('Jelovnik'),
         leading: Builder(
           builder: (context) => IconButton(
             icon: const Icon(Icons.menu),
+            tooltip: 'Glavni navigacijski meni',
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
+
         actions: [
+          IconButton(
+            icon: const Icon(Icons.accessibility_new),
+            tooltip: 'Opcije pristupačnosti',
+            onPressed: () => showAccessibilityPanel(context),
+          ),
           if (cartCount >= 0)
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -258,30 +274,30 @@ class _GuestArticlesScreenState extends State<GuestArticlesScreen> {
             ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
+          preferredSize: Size.fromHeight(searchBarHeight),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: TextField(
-              controller: _searchCtrl,
-              cursorColor: Theme.of(context).colorScheme.primary,
-              onChanged: (_) => setState(() {}),
-              // VAŽNO: ne postavljamo filled/fillColor/border ovdje,
-              // nego puštamo da naslijedi AppTheme.inputDecorationTheme
-              decoration: InputDecoration(
-                hintText: 'Pretraži artikle...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchCtrl.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          setState(() {});
-                        },
-                      )
-                    : null,
-                // ništa drugo ne override-amo
+            padding: EdgeInsets.fromLTRB(16, bigUi ? 4 : 0, 16, 12),
+            child: SizedBox(
+              height: searchBarHeight - 12, // da lijepo stane
+              child: TextField(
+                controller: _searchCtrl,
+                cursorColor: Theme.of(context).colorScheme.primary,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Pretraži artikle...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchCtrl.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                ),
+                style: const TextStyle(color: Colors.white),
               ),
-              style: const TextStyle(color: Colors.white),
             ),
           ),
         ),
@@ -647,6 +663,7 @@ class _ArticleCard extends StatelessWidget {
   final Article article;
   final VoidCallback onAdd;
   const _ArticleCard({required this.article, required this.onAdd, super.key});
+
   Future<void> _showRecommendationsDialog(BuildContext context) async {
     try {
       final prov = context.read<ArticleProvider>();
@@ -655,8 +672,6 @@ class _ArticleCard extends StatelessWidget {
       final m = article.toJson() as Map<String, dynamic>;
       final id = m['articleId'] ?? m['id'];
       if (id == null) {
-        // Ako nema ID, nema ni preporuka
-        print('Rec ID = $id');
         await showDialog(
           context: context,
           builder: (_) => const AlertDialog(
@@ -667,8 +682,6 @@ class _ArticleCard extends StatelessWidget {
         return;
       }
 
-      // Fetch preporuka
-      print('Rec ID = $id');
       final res = await prov.getRecommended(id as int);
       final items = res.items ?? [];
 
@@ -736,123 +749,228 @@ class _ArticleCard extends StatelessWidget {
     final price = _readNum(['articlePrice', 'unitPrice', 'amount']) ?? 0.0;
     final img = _decodeImage();
 
+    // ⇩⇩⇩ ako je tekst baš velik -> prilagođeni vertikalni layout
+    final textScale = MediaQuery.textScaleFactorOf(context);
+    final bool isLargeText = textScale >= 1.4; // prag možeš po želji korigovati
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Card(
         elevation: 2,
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          // ⇩⇩⇩ klik na karticu otvara popup sa detaljima
           onTap: () => _showDetailsDialog(context, name, desc, price, img),
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: img != null
-                        ? Image.memory(img, fit: BoxFit.cover)
-                        : const Icon(Icons.image, size: 32),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        desc,
-                        style: TextStyle(
-                          color: Theme.of(context).textTheme.bodySmall!.color,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          // Lijevo: cijena
-                          Text(
-                            '${price.toStringAsFixed(2)} KM',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: Colors.green,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-
-                          // Desno: dugmad – do kraja reda, bez overflowa
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 4,
-                                alignment: WrapAlignment.end,
-                                children: [
-                                  TextButton.icon(
-                                    icon: const Icon(
-                                      Icons.info_outline,
-                                      size: 18,
-                                    ),
-                                    label: const Text('Vidi preporuke'),
-                                    onPressed: () =>
-                                        _showRecommendationsDialog(context),
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 8,
-                                      ),
-                                      minimumSize: const Size(0, 36),
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: price > 0 ? onAdd : null,
-                                    style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 10,
-                                      ),
-                                      minimumSize: const Size(0, 36),
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    child: const Text('Dodaj'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            child: isLargeText
+                ? _buildLargeTextLayout(context, name, desc, price, img)
+                : _buildNormalLayout(context, name, desc, price, img),
           ),
         ),
       ),
+    );
+  }
+
+  // --- Normalni (kompaktni) layout za "normalne" veličine teksta ---
+  Widget _buildNormalLayout(
+    BuildContext context,
+    String name,
+    String desc,
+    double price,
+    Uint8List? img,
+  ) {
+    return Row(
+      children: [
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: img != null
+                ? Image.memory(img, fit: BoxFit.cover)
+                : const Icon(Icons.image, size: 32),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+                softWrap: true,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                desc,
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodySmall!.color,
+                ),
+                softWrap: true,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    '${price.toStringAsFixed(2)} KM',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        alignment: WrapAlignment.end,
+                        children: [
+                          TextButton.icon(
+                            icon: const Icon(Icons.info_outline, size: 18),
+                            label: const Text('Vidi preporuke'),
+                            onPressed: () =>
+                                _showRecommendationsDialog(context),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                              minimumSize: const Size(0, 36),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: price > 0 ? onAdd : null,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              minimumSize: const Size(0, 36),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text('Dodaj'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- Layout za velike veličine teksta: kartica se rasteže VERTIKALNO ---
+  Widget _buildLargeTextLayout(
+    BuildContext context,
+    String name,
+    String desc,
+    double price,
+    Uint8List? img,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Slika + naziv u jednom redu, naziv se širi koliko treba
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: img != null
+                    ? Image.memory(img, fit: BoxFit.cover)
+                    : const Icon(Icons.image, size: 32),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+                softWrap: true,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // Opis: bez maxLines, samo softWrap -> kartica raste u visinu koliko treba
+        Text(
+          desc,
+          style: TextStyle(color: Theme.of(context).textTheme.bodySmall!.color),
+          softWrap: true,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          '${price.toStringAsFixed(2)} KM',
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+            color: Colors.green,
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Dugmad ispod, u Wrap-u (mogu biti jedno ispod drugog ako je tekst ogroman)
+        Align(
+          alignment: Alignment.centerRight,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.end,
+            children: [
+              TextButton.icon(
+                icon: const Icon(Icons.info_outline, size: 18),
+                label: const Text('Vidi preporuke'),
+                onPressed: () => _showRecommendationsDialog(context),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  minimumSize: const Size(0, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              ElevatedButton(
+                onPressed: price > 0 ? onAdd : null,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  minimumSize: const Size(0, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Dodaj'),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -893,17 +1011,13 @@ class _ArticleCard extends StatelessWidget {
                             context,
                           ).colorScheme.surfaceVariant.withOpacity(.35),
                           child: img != null
-                              ? Image.memory(
-                                  img,
-                                  fit: BoxFit.cover, // isto kao u listi
-                                )
+                              ? Image.memory(img, fit: BoxFit.cover)
                               : const Center(
                                   child: Icon(Icons.image, size: 40),
                                 ),
                         ),
                       ),
                       const SizedBox(height: 12),
-
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -927,7 +1041,6 @@ class _ArticleCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -940,8 +1053,6 @@ class _ArticleCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-
-                      // Samo jedno dugme: Zatvori (full-width)
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -953,8 +1064,6 @@ class _ArticleCard extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // X u gornjem desnom uglu
               Positioned(
                 right: 6,
                 top: 6,

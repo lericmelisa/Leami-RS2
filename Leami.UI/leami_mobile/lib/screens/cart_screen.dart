@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:leami_mobile/screens/accessibility_settings.dart';
 import 'package:provider/provider.dart';
 import 'package:leami_mobile/providers/cart_provider.dart';
 import 'package:leami_mobile/screens/payment_screen.dart';
@@ -47,8 +48,14 @@ class CartScreen extends StatelessWidget {
     final cart = context.watch<CartProvider>();
     final entries = cart.items.entries.toList();
 
+    final settings = context.watch<AccessibilitySettings>();
+    final bool bigUi = settings.largeControls || settings.textScale >= 1.4;
+
+    final double toolbarHeight = bigUi ? 64 : kToolbarHeight;
+
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: bigUi ? 72 : kToolbarHeight,
         title: const Text('Korpa'),
         elevation: 0,
         actions: entries.isNotEmpty
@@ -197,10 +204,7 @@ class CartScreen extends StatelessWidget {
                                     const SizedBox(height: 4),
                                     Text(
                                       '${item.price.toStringAsFixed(2)} KM po komadu',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey.shade600,
-                                      ),
+                                      style: TextStyle(fontSize: 13),
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
@@ -228,30 +232,36 @@ class CartScreen extends StatelessWidget {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                            onTap: () {
-                                              final newQty = item.quantity - 1;
-                                              if (newQty > 0) {
-                                                cart.updateQuantity(id, newQty);
-                                              } else {
-                                                _showRemoveDialog(
-                                                  context,
-                                                  id,
-                                                  item.name,
-                                                  cart,
-                                                );
-                                              }
-                                            },
-                                            child: const Padding(
-                                              padding: EdgeInsets.all(8),
-                                              child: Icon(
-                                                Icons.remove,
-                                                size: 18,
+                                        Tooltip(
+                                          message: 'Smanji količinu artikla',
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              onTap: () {
+                                                final newQty =
+                                                    item.quantity - 1;
+                                                if (newQty > 0) {
+                                                  cart.updateQuantity(
+                                                    id,
+                                                    newQty,
+                                                  );
+                                                } else {
+                                                  _showRemoveDialog(
+                                                    context,
+                                                    id,
+                                                    item.name,
+                                                    cart,
+                                                  );
+                                                }
+                                              },
+                                              child: const Padding(
+                                                padding: EdgeInsets.all(8),
+                                                child: Icon(
+                                                  Icons.remove,
+                                                  size: 18,
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -269,22 +279,27 @@ class CartScreen extends StatelessWidget {
                                             ),
                                           ),
                                         ),
-                                        Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                            onTap: () {
-                                              cart.addItem(
-                                                id,
-                                                item.name,
-                                                item.price,
-                                              );
-                                            },
-                                            child: const Padding(
-                                              padding: EdgeInsets.all(8),
-                                              child: Icon(Icons.add, size: 18),
+                                        Tooltip(
+                                          message: 'Povećaj količinu artikla',
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              onTap: () {
+                                                cart.addItem(
+                                                  id,
+                                                  item.name,
+                                                  item.price,
+                                                );
+                                              },
+                                              child: const Padding(
+                                                padding: EdgeInsets.all(8),
+                                                child: Icon(
+                                                  Icons.add,
+                                                  size: 18,
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -292,22 +307,25 @@ class CartScreen extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 8),
-                                  Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(20),
-                                      onTap: () => _showRemoveDialog(
-                                        context,
-                                        id,
-                                        item.name,
-                                        cart,
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(6),
-                                        child: Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.red.shade400,
-                                          size: 20,
+                                  Tooltip(
+                                    message: 'Ukloni artikal iz korpe',
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(20),
+                                        onTap: () => _showRemoveDialog(
+                                          context,
+                                          id,
+                                          item.name,
+                                          cart,
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(6),
+                                          child: Icon(
+                                            Icons.delete_outline,
+                                            color: Colors.red.shade400,
+                                            size: 20,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -340,43 +358,90 @@ class CartScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Broj artikala:',
-                              style: TextStyle(fontSize: 14),
-                            ),
-                            Text(
-                              '${cart.totalItems}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                        // Broj artikala
+                        if (bigUi)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Broj artikala:',
+                                style: TextStyle(fontSize: 14),
                               ),
-                            ),
-                          ],
-                        ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${cart.totalItems}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Broj artikala:',
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              Text(
+                                '${cart.totalItems}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+
                         const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Ukupna cijena:',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
+
+                        // Ukupna cijena
+                        if (bigUi)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Ukupna cijena:',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            Text(
-                              '${cart.totalPrice.toStringAsFixed(2)} KM',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.green,
+                              const SizedBox(height: 2),
+                              Text(
+                                '${cart.totalPrice.toStringAsFixed(2)} KM',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.green,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          )
+                        else
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Ukupna cijena:',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                '${cart.totalPrice.toStringAsFixed(2)} KM',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ],
+                          ),
+
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () {

@@ -229,7 +229,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Plaćanje kešom',
+                                          'Gotovina',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
                                           ),
